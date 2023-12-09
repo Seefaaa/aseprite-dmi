@@ -1,0 +1,29 @@
+{
+	"name": "dmi-editor",
+	"displayName": "DMI Editor",
+	"description": "DMI Editor Extension for Aseprite",
+	"version": "1.0.0",
+	"author": {
+		"name": "Seefaaa",
+		"url": "https://github.com/Seefaaa"
+	},
+	"contributors": [],
+	"publisher": "Seefaaa",
+	"license": "GPL-3.0",
+	"categories": [ "Scripts" ],
+	"contributes": {
+		"scripts": [
+			{ "path": "./scripts/classes/cache.lua" },
+			{ "path": "./scripts/classes/dmi.lua" },
+			{ "path": "./scripts/classes/editor.lua" },
+			{ "path": "./scripts/classes/lib.lua" },
+			{ "path": "./scripts/classes/statesprite.lua" },
+			{ "path": "./scripts/classes/widget.lua" },
+			{ "path": "./scripts/functions/other.lua" },
+			{ "path": "./scripts/functions/string.lua" },
+			{ "path": "./scripts/functions/table.lua" },
+			{ "path": "./scripts/constants.lua" },
+			{ "path": "./scripts/main.lua" }
+		]
+	}
+}
