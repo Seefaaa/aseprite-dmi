@@ -608,7 +608,7 @@ function Editor:state_properties(state)
 			id = "state_directions",
 			label = "Directions:",
 			option = direction,
-			options = { direction, "--OPEN STATE--" },
+			options = { direction, "--OPEN-STATE--" },
 		}
 	end
 
