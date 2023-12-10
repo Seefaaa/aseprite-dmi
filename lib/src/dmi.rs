@@ -47,7 +47,11 @@ impl Dmi {
             return Err(DmiError::InvalidMetadataVersion);
         }
 
-        let mut dmi = Self::new(path.as_ref().file_stem().unwrap().to_str().unwrap().into(), 32, 32);
+        let mut dmi = Self::new(
+            path.as_ref().file_stem().unwrap().to_str().unwrap().into(),
+            32,
+            32,
+        );
 
         for line in lines {
             if line == "# END DMI" {
@@ -114,18 +118,6 @@ impl Dmi {
             }
         }
 
-        for state in dmi.states.iter() {
-            if state.delays.len() > 0 {
-                if state.frame_count != state.delays.len() as u32 {
-                    return Err(DmiError::FrameCountMismatch);
-                }
-            } else {
-                if state.frame_count != 1 {
-                    return Err(DmiError::FrameCountMismatch);
-                }
-            }
-        }
-
         let mut reader = ImageReader::open(&path)?;
         reader.set_format(image::ImageFormat::Png);
 
@@ -134,6 +126,21 @@ impl Dmi {
 
         let mut index = 0;
         for state in dmi.states.iter_mut() {
+            let frame_count_usize = state.frame_count as usize;
+
+            if !state.delays.is_empty() {
+                if state.delays.len() > frame_count_usize {
+                    state.delays.truncate(frame_count_usize);
+                } else if state.delays.len() < frame_count_usize {
+                    let last_delay = *state.delays.last().unwrap();
+                    let additional_delays =
+                        vec![last_delay; frame_count_usize - state.delays.len()];
+                    state.delays.extend(additional_delays);
+                }
+            } else if state.frame_count > 1 {
+                state.delays = vec![1.; frame_count_usize];
+            }
+
             for _ in 0..state.frame_count {
                 for _ in 0..state.dirs {
                     let image = image.crop(
@@ -414,7 +421,6 @@ pub enum DmiError {
     MissingMetadataValue,
     OutOfOrderStateInfo,
     UnknownMetadataKey,
-    FrameCountMismatch,
     ImageSizeMismatch,
     FindDirError,
 }
