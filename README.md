@@ -2,6 +2,10 @@
 
 This project is a DMI (BYOND's Dream Maker icon files) editor extension for Aseprite, a popular pixel art tool. It is built with Rust and Lua, and is designed to enhance the Aseprite experience by providing tools for editing and managing DMI files.
 
+## Warning
+
+Please note that this extension may cause Aseprite to crash under certain circumstances. Use it at your own risk.
+
 ## Download
 
 You can download the ready-to-use version of this extension from the [Releases](https://github.com/Seefaaa/aseprite-dmi/releases) page on the project's GitHub repository.
