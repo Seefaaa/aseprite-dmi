@@ -21,8 +21,8 @@ impl Dmi {
     pub fn new(name: String, width: u32, height: u32) -> Dmi {
         Dmi {
             name,
-            width: width,
-            height: height,
+            width,
+            height,
             states: Vec::new(),
         }
     }
@@ -211,7 +211,7 @@ impl Dmi {
         Ok(())
     }
     pub fn metadata(&self) -> String {
-        let mut string = String::new();
+        let mut string = String::default();
         string.push_str("# BEGIN DMI\n");
         string.push_str(format!("version = {}\n", DMI_VERSION).as_str());
         string.push_str(format!("\twidth = {}\n", self.width).as_str());
@@ -257,7 +257,7 @@ impl Dmi {
             .ok_or(DmiError::FindDirError)?;
         let path = Path::new(&path);
 
-        fs::create_dir(path)?;
+        fs::create_dir_all(path)?;
 
         let mut serialized_dmi = SerializedDmi {
             name: self.name.clone(),
@@ -327,7 +327,7 @@ impl State {
         let mut state = SerializedState {
             name: self.name.clone(),
             dirs: self.dirs,
-            frame_key: String::new(),
+            frame_key: String::default(),
             frame_count: self.frame_count,
             delays: self.delays.clone(),
             loop_: self.loop_,

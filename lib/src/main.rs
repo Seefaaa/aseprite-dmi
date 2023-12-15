@@ -112,7 +112,7 @@ fn main() {
                 panic!("Temp directory does not exist");
             }
 
-            let state: State = State::new_blank(String::new(), width, height);
+            let state: State = State::new_blank(String::default(), width, height);
             let state = state.serialize(temp).expect("Failed to serialize state");
             let json = serde_json::to_string(&state).expect("Failed to serialize");
 
