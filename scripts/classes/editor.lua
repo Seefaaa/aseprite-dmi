@@ -7,6 +7,7 @@
 --- @field max_in_a_row number The maximum number of states in a row.
 --- @field max_in_a_column number The maximum number of states in a column.
 --- @field focused_widget AnyWidget Widget The currently focused widget.
+--- @field hovering_widgets AnyWidget[] A table containing all widgets that are currently being hovered by the mouse.
 --- @field scroll number The current scroll position.
 --- @field mouse Editor.Mouse The current mouse state.
 --- @field dmi Dmi The currently opened DMI file.
@@ -30,28 +31,29 @@ Editor.__index = Editor
 --- @param dmi Dmi|nil The DMI object to be opened if not passed `filename` or `Editor.open_path` will be used.
 --- @return Editor editor  The newly created Editor instance.
 function Editor.new(title, filename, dmi)
-	local self           = setmetatable({}, Editor)
+	local self            = setmetatable({}, Editor)
 
-	self.title           = title
-	self.focused_widget  = nil
-	self.scroll          = 0
-	self.mouse           = { position = Point(0, 0), leftClick = false }
-	self.dmi             = nil
-	self.open_sprites    = {}
-	self.widgets         = {}
-	self.save_path       = nil
-	self.open_path       = filename or nil
+	self.title            = title
+	self.focused_widget   = nil
+	self.hovering_widgets = {}
+	self.scroll           = 0
+	self.mouse            = { position = Point(0, 0), leftClick = false }
+	self.dmi              = nil
+	self.open_sprites     = {}
+	self.widgets          = {}
+	self.save_path        = nil
+	self.open_path        = filename or nil
 
-	self.canvas_width    = 185
-	self.canvas_height   = 215
-	self.max_in_a_row    = 1
-	self.max_in_a_column = 1
+	self.canvas_width     = 185
+	self.canvas_height    = 215
+	self.max_in_a_row     = 1
+	self.max_in_a_column  = 1
 
-	self.beforecommand   = app.events:on("beforecommand", function(ev) self:onbeforecommand(ev) end)
+	self.beforecommand    = app.events:on("beforecommand", function(ev) self:onbeforecommand(ev) end)
 
-	self.aftercommand    = app.events:on("aftercommand", function(ev) self:onaftercommand(ev) end)
+	self.aftercommand     = app.events:on("aftercommand", function(ev) self:onaftercommand(ev) end)
 
-	self.dialog          = Dialog {
+	self.dialog           = Dialog {
 		title = title,
 		onclose = function() self:onclose() end
 	}
@@ -169,7 +171,8 @@ function Editor:onpaint(ctx)
 	if max_row ~= self.max_in_a_row or max_column ~= self.max_in_a_column then
 		self.max_in_a_row = max_row > 0 and max_row or 1
 		self.max_in_a_column = max_column > 0 and max_column or 1
-		return self:repaint_states()
+		self:repaint_states()
+		return
 	end
 
 	local hovers = {} --[[ @as (string)[] ]]
@@ -237,7 +240,7 @@ function Editor:onpaint(ctx)
 				)
 
 				if is_mouse_over and widget.hover_text then
-					hovers[#hovers + 1] = widget.hover_text
+					table.insert(hovers, widget.hover_text)
 				end
 			elseif widget.type == "ThemeWidget" then
 				local widget = widget --[[ @as ThemeWidget ]]
@@ -301,8 +304,39 @@ end
 --- Updates the mouse position and triggers a repaint.
 --- @param ev table The mouse event containing the x and y coordinates.
 function Editor:onmousemove(ev)
-	self.mouse.position = Point(ev.x, ev.y)
-	self:repaint()
+	local mouse_position = Point(ev.x, ev.y)
+	local should_repaint = false
+	--- @type AnyWidget[]
+	local hovering_widgets = {}
+
+	for _, widget in ipairs(self.widgets) do
+		if widget.bounds:contains(mouse_position) then
+			table.insert(hovering_widgets, widget)
+		end
+	end
+
+	for _, widget in ipairs(self.hovering_widgets) do
+		if table.index_of(hovering_widgets, widget) == 0 or widget.hover_text then
+			should_repaint = true
+			break
+		end
+	end
+
+	if not should_repaint then
+		for _, widget in ipairs(hovering_widgets) do
+			if table.index_of(self.hovering_widgets, widget) == 0 or widget.hover_text then
+				should_repaint = true
+				break
+			end
+		end
+	end
+
+	self.mouse.position = mouse_position
+	self.hovering_widgets = hovering_widgets
+
+	if should_repaint then
+		self:repaint()
+	end
 end
 
 --- Handles the mouse wheel event for scrolling through DMI states.
@@ -423,7 +457,7 @@ function Editor:repaint_states()
 
 			local name = #state.name > 0 and state.name or "no name"
 
-			self.widgets[#self.widgets + 1] = IconWidget.new(
+			table.insert(self.widgets, IconWidget.new(
 				self,
 				bounds,
 				{
@@ -432,9 +466,9 @@ function Editor:repaint_states()
 				},
 				image_cache:get(state.frame_key),
 				function() self:open_state(state) end
-			)
+			))
 
-			self.widgets[#self.widgets + 1] = TextWidget.new(
+			table.insert(self.widgets, TextWidget.new(
 				self,
 				Rectangle(
 					bounds.x,
@@ -450,14 +484,14 @@ function Editor:repaint_states()
 				text_color,
 				name,
 				function() self:state_properties(state) end
-			)
+			))
 		end
 	end
 
 	local index = #self.dmi.states + 1
 	local bounds = self:box_bounds(index)
 
-	self.widgets[#self.widgets + 1] = ThemeWidget.new(
+	table.insert(self.widgets, ThemeWidget.new(
 		self,
 		bounds,
 		{
@@ -466,9 +500,9 @@ function Editor:repaint_states()
 		},
 		nil,
 		function() self:new_state() end
-	)
+	))
 
-	self.widgets[#self.widgets + 1] = TextWidget.new(
+	table.insert(self.widgets, TextWidget.new(
 		self,
 		Rectangle(
 			bounds.x,
@@ -481,7 +515,7 @@ function Editor:repaint_states()
 			hot = { part = "sunken_focused", color = "button_hot_text" },
 		},
 		"+"
-	)
+	))
 
 	self:repaint()
 end
@@ -560,7 +594,7 @@ function Editor:open_state(state)
 
 	-- app.command.SaveFile { ui = false, filename = app.fs.joinPath(self.dmi.temp, state.frame_key .. ".ase") }
 
-	self.open_sprites[#self.open_sprites + 1] = StateSprite.new(self, self.dmi, state, sprite, transparentColor)
+	table.insert(self.open_sprites, StateSprite.new(self, self.dmi, state, sprite, transparentColor))
 	self:remove_nil_statesprites()
 end
 
@@ -661,7 +695,7 @@ function Editor:state_properties(state)
 
 	dialog:button {
 		text = "Remove",
-		onclick = function ()
+		onclick = function()
 			for i, state_sprite in ipairs(self.open_sprites) do
 				if state_sprite.state == state then
 					state_sprite.sprite:close()
@@ -773,7 +807,7 @@ end
 function Editor:new_state()
 	local success, _, _, _, state = lib:new_state(self.dmi)
 	if success then
-		self.dmi.states[#self.dmi.states + 1] = state
+		table.insert(self.dmi.states, state)
 		image_cache:load_state(self.dmi, state --[[@as State]])
 		self:repaint_states()
 	end
@@ -791,7 +825,7 @@ function Editor:reorder_layers(state_sprite)
 		if index ~= 0 then
 			dir_layers[index] = layer
 		else
-			other_layers[#other_layers + 1] = layer
+			table.insert(other_layers, layer)
 		end
 	end
 	for i = 1, #dir_layers, 1 do
