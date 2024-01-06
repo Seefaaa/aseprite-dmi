@@ -12,7 +12,7 @@ You can download the ready-to-use version of this extension from the [Releases](
 
 ## Usage
 
-After downloading or building the project, you can add the extension to Aseprite. If opening the `.aseprite-extension` file does not work, try dragging and dropping it into Aseprite or use the `Add Extension` button in Aseprite.
+After downloading or building the project, you can add the extension to Aseprite. If opening the `.aseprite-extension` file does not work, try dragging and dropping it into Aseprite or use the `Add Extension` button in `Preferences > Extensions`.
 
 ## Building the Project
 
