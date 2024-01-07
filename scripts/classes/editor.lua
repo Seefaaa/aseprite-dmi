@@ -13,6 +13,7 @@
 --- @field dmi Dmi The currently opened DMI file.
 --- @field open_sprites (StateSprite)[] A table containing all open sprites.
 --- @field widgets (AnyWidget)[] A table containing all state widgets.
+--- @field context_widget ContextWidget|nil The state that is currently being right clicked
 --- @field beforecommand number The event object for the "beforecommand" event.
 --- @field aftercommand number The event object for the "aftercommand" event.
 --- @field dialog Dialog The dialog object.
@@ -24,6 +25,7 @@ Editor.__index = Editor
 --- @class Editor.Mouse
 --- @field position Point The current mouse position.
 --- @field leftClick boolean Whether the left mouse button is pressed.
+--- @field rightClick boolean Whether the right mouse button is pressed.
 
 --- Creates a new instance of the Editor class.
 --- @param title string The title of the editor.
@@ -37,10 +39,11 @@ function Editor.new(title, filename, dmi)
 	self.focused_widget   = nil
 	self.hovering_widgets = {}
 	self.scroll           = 0
-	self.mouse            = { position = Point(0, 0), leftClick = false }
+	self.mouse            = { position = Point(0, 0), leftClick = false, rightClick = false }
 	self.dmi              = nil
 	self.open_sprites     = {}
 	self.widgets          = {}
+	self.context_widget   = nil
 	self.save_path        = nil
 	self.open_path        = filename or nil
 
@@ -148,21 +151,26 @@ function Editor:open_file(dmi)
 	end
 end
 
-local text_height = 0
-local box_border = 4
-local box_padding = 5
+local TEXT_HEIGHT = 0
+local CONTEXT_BUTTON_HEIGHT = 0
+local BOX_BORDER = 4
+local BOX_PADDING = 5
 
 --- This function is called when the editor needs to repaint its contents.
 --- @param ctx GraphicsContext The drawing context used to draw on the editor canvas.
 function Editor:onpaint(ctx)
-	local min_width = self.dmi and (self.dmi.width + box_padding) or 1
-	local min_height = self.dmi and (self.dmi.height + box_border + box_padding * 2 + text_height) or 1
+	local min_width = self.dmi and (self.dmi.width + BOX_PADDING) or 1
+	local min_height = self.dmi and (self.dmi.height + BOX_BORDER + BOX_PADDING * 2 + TEXT_HEIGHT) or 1
 
 	self.canvas_width = ctx.width > min_width and ctx.width or min_width
 	self.canvas_height = ctx.height > min_height and ctx.height or min_height
 
-	if text_height == 0 then
-		text_height = ctx:measureText("A").height
+	if TEXT_HEIGHT == 0 then
+		TEXT_HEIGHT = ctx:measureText("A").height
+	end
+
+	if CONTEXT_BUTTON_HEIGHT == 0 then
+		CONTEXT_BUTTON_HEIGHT = TEXT_HEIGHT + BOX_PADDING * 2
 	end
 
 	local max_row = self.dmi and math.floor(self.canvas_width / min_width) or 1
@@ -184,7 +192,7 @@ function Editor:onpaint(ctx)
 				state = widget.state.focused or state
 			end
 
-			local is_mouse_over = widget.bounds:contains(self.mouse.position)
+			local is_mouse_over = not self.context_widget and widget.bounds:contains(self.mouse.position)
 
 			if is_mouse_over then
 				state = widget.state.hot or state
@@ -259,9 +267,59 @@ function Editor:onpaint(ctx)
 			end
 		end
 	end
+
+	if self.context_widget then
+		local widget = self.context_widget --[[ @as ContextWidget ]]
+
+		if not widget.drawn then
+			local width = 0
+			local height = #widget.buttons * CONTEXT_BUTTON_HEIGHT
+
+			for _, button in ipairs(widget.buttons) do
+				local text_size = ctx:measureText(button.text)
+				if text_size.width > width then
+					width = text_size.width
+				end
+			end
+
+			width = width + BOX_PADDING * 2
+
+			local mouse_x = widget.bounds.x
+			local mouse_y = widget.bounds.y
+
+			local x = mouse_x + width >= ctx.width and mouse_x - width or mouse_x + 1
+			local y = mouse_y - height >= 0 and mouse_y - height or mouse_y + 1
+
+			local bounds = Rectangle(x, y, width, height)
+
+			widget.bounds = bounds
+			widget.drawn = true
+		end
+
+		ctx.color = app.theme.color["button_normal_text"]
+		ctx:drawThemeRect("sunken_normal", widget.bounds)
+
+		for i, button in ipairs(widget.buttons) do
+			local button_bounds = Rectangle(widget.bounds.x, widget.bounds.y + (i - 1) * CONTEXT_BUTTON_HEIGHT,
+				widget.bounds.width,
+				CONTEXT_BUTTON_HEIGHT)
+			local contains_mouse = button_bounds:contains(self.mouse.position)
+
+			ctx.color = app.theme.color["button_normal_text"]
+			if contains_mouse then
+				ctx.color = app.theme.color["button_hot_text"]
+				ctx:drawThemeRect(
+					contains_mouse and "sunken_focused" or "sunken_normal", button_bounds)
+			end
+			ctx:fillText(button.text, button_bounds.x + BOX_PADDING, button_bounds.y + BOX_PADDING)
+		end
+
+		return
+	end
+
 	for _, text in ipairs(hovers) do
 		local text_size = ctx:measureText(text)
-		local size = Size(text_size.width + box_padding * 2, text_size.height + box_padding * 2)
+		local size = Size(text_size.width + BOX_PADDING * 2, text_size.height + BOX_PADDING * 2)
 		ctx.color = app.theme.color["button_normal_text"]
 		ctx:drawThemeRect("sunken_normal",
 			Rectangle(self.mouse.position.x - size.width / 2, self.mouse.position.y - size.height,
@@ -272,33 +330,60 @@ function Editor:onpaint(ctx)
 end
 
 --- Handles the mouse down event in the editor and triggers a repaint.
---- @param ev table The mouse event object.
+--- @param ev MouseEvent The mouse event object.
 function Editor:onmousedown(ev)
 	if ev.button == MouseButton.LEFT then
 		self.mouse.leftClick = true
 		self.focused_widget = nil
+	elseif ev.button == MouseButton.RIGHT then
+		self.mouse.rightClick = true
+		self.focused_widget = nil
+		self.context_widget = nil
 	end
 	self:repaint()
 end
 
 --- Handles the mouse up event in the editor and triggers a repaint.
---- @param ev table The mouse event object.
+--- @param ev MouseEvent The mouse event object.
 function Editor:onmouseup(ev)
-	if ev.button == MouseButton.LEFT then
-		if self.mouse.leftClick then
+	local repaint = true
+	if ev.button == MouseButton.LEFT or ev.button == MouseButton.RIGHT then
+		if self.context_widget then
+			for i, button in ipairs(self.context_widget.buttons) do
+				local button_bounds = Rectangle(self.context_widget.bounds.x,
+					self.context_widget.bounds.y + (i - 1) * CONTEXT_BUTTON_HEIGHT,
+					self.context_widget.bounds.width, CONTEXT_BUTTON_HEIGHT)
+				if button_bounds:contains(self.mouse.position) then
+					self.context_widget = nil
+					repaint = false
+					self:repaint()
+					button.onclick()
+					break
+				end
+			end
+			self.context_widget = nil
+		else
 			for _, widget in ipairs(self.widgets) do
 				local is_mouse_over = widget.bounds:contains(self.mouse.position)
 				if is_mouse_over then
-					if widget.onmouseup then
-						widget.onmouseup()
+					if ev.button == MouseButton.LEFT and widget.onleftclick then
+						widget.onleftclick(ev)
+					elseif ev.button == MouseButton.RIGHT and widget.onrightclick then
+						widget.onrightclick(ev)
 					end
 					self.focused_widget = widget
 				end
 			end
+		end
+		if ev.button == MouseButton.LEFT then
 			self.mouse.leftClick = false
+		elseif ev.button == MouseButton.RIGHT then
+			self.mouse.rightClick = false
 		end
 	end
-	self:repaint()
+	if repaint then
+		self:repaint()
+	end
 end
 
 --- Updates the mouse position and triggers a repaint.
@@ -315,10 +400,29 @@ function Editor:onmousemove(ev)
 		end
 	end
 
-	for _, widget in ipairs(self.hovering_widgets) do
-		if table.index_of(hovering_widgets, widget) == 0 or widget.hover_text then
+	if self.context_widget then
+		local focus = 0
+		for i, _ in ipairs(self.context_widget.buttons) do
+			local button_bounds = Rectangle(self.context_widget.bounds.x,
+				self.context_widget.bounds.y + (i - 1) * CONTEXT_BUTTON_HEIGHT,
+				self.context_widget.bounds.width, CONTEXT_BUTTON_HEIGHT)
+			if button_bounds:contains(mouse_position) then
+				focus = i
+				break
+			end
+		end
+		if self.context_widget.focus ~= focus then
+			self.context_widget.focus = focus
 			should_repaint = true
-			break
+		end
+	end
+
+	if not should_repaint then
+		for _, widget in ipairs(self.hovering_widgets) do
+			if table.index_of(hovering_widgets, widget) == 0 or widget.hover_text then
+				should_repaint = true
+				break
+			end
 		end
 	end
 
@@ -445,16 +549,17 @@ function Editor:repaint_states()
 					hot = { part = "sunken_focused", color = "button_hot_text" },
 				},
 				image_cache:get(state.frame_key),
-				function() self:open_state(state) end
+				function() self:open_state(state) end,
+				function(ev) self:state_context(state, ev) end
 			))
 
 			table.insert(self.widgets, TextWidget.new(
 				self,
 				Rectangle(
 					bounds.x,
-					bounds.y + bounds.height + box_padding,
+					bounds.y + bounds.height + BOX_PADDING,
 					bounds.width,
-					text_height
+					TEXT_HEIGHT
 				),
 				{
 					normal = { part = "sunken_normal", color = "button_normal_text" },
@@ -463,7 +568,8 @@ function Editor:repaint_states()
 				name,
 				text_color,
 				name,
-				function() self:state_properties(state) end
+				function() self:state_properties(state) end,
+				function(ev) self:state_context(state, ev) end
 			))
 		end
 	end
@@ -488,7 +594,7 @@ function Editor:repaint_states()
 			bounds.x,
 			bounds.y + bounds.height / 2 - 3,
 			bounds.width,
-			text_height
+			TEXT_HEIGHT
 		),
 		{
 			normal = { part = "sunken_normal", color = "button_normal_text" },
@@ -504,12 +610,28 @@ function Editor:box_bounds(index)
 	local row_index = index - self.max_in_a_row * self.scroll
 
 	return Rectangle(
-		(self.dmi.width + box_padding) * ((row_index - 1) % self.max_in_a_row),
-		(self.dmi.height + box_border + box_padding * 2 + text_height) * math.floor((row_index - 1) / self.max_in_a_row) +
-		box_padding,
-		self.dmi.width + box_border,
-		self.dmi.height + box_border
+		(self.dmi.width + BOX_PADDING) * ((row_index - 1) % self.max_in_a_row),
+		(self.dmi.height + BOX_BORDER + BOX_PADDING * 2 + TEXT_HEIGHT) * math.floor((row_index - 1) / self.max_in_a_row) +
+		BOX_PADDING,
+		self.dmi.width + BOX_BORDER,
+		self.dmi.height + BOX_BORDER
 	)
+end
+
+--- Opens a context menu for a state.
+--- @param state State The state to be opened.
+--- @param ev MouseEvent The mouse event object.
+function Editor:state_context(state, ev)
+	self.context_widget = ContextWidget.new(
+		Rectangle(ev.x, ev.y, 0, 0),
+		state,
+		{
+			{ text = "Properties", onclick = function() self:state_properties(state) end },
+			{ text = "Open",       onclick = function() self:open_state(state) end },
+			{ text = "Remove",     onclick = function() self:remove_state(state) end },
+		}
+	)
+	self:repaint()
 end
 
 --- Opens a state in the Aseprite editor by creating a new sprite and populating it with frames and layers based on the provided state.
@@ -576,6 +698,20 @@ function Editor:open_state(state)
 
 	table.insert(self.open_sprites, StateSprite.new(self, self.dmi, state, sprite, transparentColor))
 	self:remove_nil_statesprites()
+end
+
+function Editor:remove_state(state)
+	for i, state_sprite in ipairs(self.open_sprites) do
+		if state_sprite.state == state then
+			state_sprite.sprite:close()
+			table.remove(self.open_sprites, i)
+			break
+		end
+	end
+
+	table.remove(self.dmi.states, table.index_of(self.dmi.states, state))
+	image_cache:remove(state.frame_key)
+	self:repaint_states()
 end
 
 function Editor:remove_nil_statesprites()
@@ -676,17 +812,7 @@ function Editor:state_properties(state)
 	dialog:button {
 		text = "Remove",
 		onclick = function()
-			for i, state_sprite in ipairs(self.open_sprites) do
-				if state_sprite.state == state then
-					state_sprite.sprite:close()
-					table.remove(self.open_sprites, i)
-					break
-				end
-			end
-
-			table.remove(self.dmi.states, table.index_of(self.dmi.states, state))
-			image_cache:remove(state.frame_key)
-			self:repaint_states()
+			self:remove_state(state)
 			dialog:close()
 		end,
 	}

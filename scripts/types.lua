@@ -220,6 +220,8 @@ if not MouseButton then
 		LEFT = 1,
 		MIDDLE = 2,
 		RIGHT = 3,
+		X1 = 4,
+		X2 = 5,
 	}
 end
 
@@ -705,7 +707,27 @@ end
 --- @field stroke fun(self: GraphicsContext)
 --- @field fill fun(self: GraphicsContext)
 
+--- @class MouseEvent
+--- @field x number
+--- @field y number
+--- @field button MouseButton
+--- @field pressure unknown
+--- @field deltaX? number
+--- @field deltaY? number
+--- @field altKey boolean
+--- @field metaKey boolean
+--- @field ctrlKey boolean
+--- @field shiftKey boolean
+--- @field spaceKey boolean
+
 --- @alias PixelColor number
+
+--- @class MouseButton
+--- @field LEFT number
+--- @field MIDDLE number
+--- @field RIGHT number
+--- @field X1 number
+--- @field X2 number
 
 --- @alias ColorMode
 ---| 0
