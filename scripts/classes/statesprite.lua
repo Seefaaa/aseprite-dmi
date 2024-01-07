@@ -35,20 +35,35 @@ function StateSprite:save()
 	end
 
 	local matches = {}
+	local duplicates = {}
+
 	for _, layer in ipairs(self.sprite.layers) do
 		local direction = table.index_of(DIRECTION_NAMES, layer.name)
 		if direction > 0 and direction <= self.state.dirs then
 			if matches[layer.name] then
-				app.alert { title = self.editor.title, text = "There must be only one layer for each direction" }
-				return false
+				table.insert(duplicates, layer.name)
 			else
 				matches[layer.name] = true
 			end
 		end
+
+	end
+
+	if #duplicates > 0 then
+		app.alert { title = self.editor.title, text = "There must be only one layer for each direction\n" .. table.concat(duplicates, ", ") .. #duplicates > 1 and " are " or " is " .. "duplicated" }
+		return false
 	end
 
 	if table.keys_len(matches) ~= self.state.dirs then
-		app.alert { title = self.editor.title, text = "There must be only one layer for each direction" }
+		local missing = {}
+
+		for _, direction in ipairs(DIRECTION_NAMES) do
+			if direction <= self.state.dirs and not matches[direction] then
+				table.insert(missing, direction)
+			end
+		end
+
+		app.alert { title = self.editor.title, text = "There must be one layer for each direction\n" .. table.concat(missing, ", ") .. #missing > 1 and " are " or " is " .. "missing" }
 		return false
 	end
 

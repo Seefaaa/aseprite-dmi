@@ -376,26 +376,6 @@ function Editor:onbeforecommand(ev)
 				break
 			end
 		end
-	elseif ev.name == "RemoveLayer" then
-		for _, state_sprite in ipairs(self.open_sprites) do
-			if app.sprite == state_sprite.sprite then
-				if table.index_of(DIRECTION_NAMES, app.layer.name) > 0 then
-					ev.stopPropagation()
-					app.alert { title = self.title, text = "You can't remove direction layers" }
-				end
-				break
-			end
-		end
-	elseif ev.name == "LayerProperties" then
-		for _, state_sprite in ipairs(self.open_sprites) do
-			if app.sprite == state_sprite.sprite then
-				if table.index_of(DIRECTION_NAMES, app.layer.name) > 0 then
-					ev.stopPropagation()
-					app.alert { title = self.title, text = "You can't change direction layer properties" }
-				end
-				break
-			end
-		end
 	elseif ev.name == "SpriteSize" then
 		for _, state_sprite in ipairs(self.open_sprites) do
 			if app.sprite == state_sprite.sprite then
