@@ -113,6 +113,23 @@ function Lib:new_state(dmi)
 	return success, reason, code, output, success and State.new(json.decode(output)) or nil
 end
 
+--- Copies the provided state using the provided DMI information to the clipboard.
+--- @param dmi Dmi The DMI object containing the necessary information.
+--- @param state State The state to be copied.
+function Lib:copy_state(dmi, state)
+	local data_json = app.fs.joinPath(dmi.temp, "copy.json")
+	local file, errmsg = io.open(data_json, "w+")
+
+	if file then
+		file:write(json.encode(state))
+		file:close()
+
+		return self:call("COPYSTATE", '"' .. dmi.temp .. '" "' .. data_json .. '"')
+	else
+		print("Error writing to file: " .. errmsg)
+	end
+end
+
 --- Removes a directory at the specified path.
 --- @param path string The path of the directory to be removed.
 --- @return boolean|nil success True if the directory is successfully removed, false otherwise.

@@ -628,6 +628,7 @@ function Editor:state_context(state, ev)
 		{
 			{ text = "Properties", onclick = function() self:state_properties(state) end },
 			{ text = "Open",       onclick = function() self:open_state(state) end },
+			{ text = "Copy", onclick = function() self:copy_state(state) end },
 			{ text = "Remove",     onclick = function() self:remove_state(state) end },
 		}
 	)
@@ -700,6 +701,8 @@ function Editor:open_state(state)
 	self:remove_nil_statesprites()
 end
 
+--- Removes a state from the DMI file.
+--- @param state State The state to be removed.
 function Editor:remove_state(state)
 	for i, state_sprite in ipairs(self.open_sprites) do
 		if state_sprite.state == state then
@@ -714,6 +717,23 @@ function Editor:remove_state(state)
 	self:repaint_states()
 end
 
+--- Copies a state to the clipboard.
+--- @param state State The state to be copied.
+function Editor:copy_state(state)
+	for _, state_sprite in ipairs(self.open_sprites) do
+		if state_sprite.state == state then
+			if state_sprite.sprite.isModified then
+				app.alert { title = self.title, text = "Save the open sprite first" }
+				return
+			end
+			break
+		end
+	end
+
+	lib:copy_state(self.dmi, state)
+end
+
+--- Removes unused statesprites from the editor.
 function Editor:remove_nil_statesprites()
 	for index, state_sprite in ipairs(self.open_sprites) do
 		if not state_sprite.sprite or not state_sprite.state then

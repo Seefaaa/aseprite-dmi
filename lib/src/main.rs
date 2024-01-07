@@ -1,3 +1,6 @@
+use arboard::Clipboard;
+use dmi::ClipboardState;
+use dmi::SerializedState;
 use serde_json;
 use std::env;
 use std::fs;
@@ -117,6 +120,32 @@ fn main() {
             let json = serde_json::to_string(&state).expect("Failed to serialize");
 
             print!("{}", json);
+        }
+        "COPYSTATE" => {
+            let temp = arguments.next().expect("No temp directory provided");
+            let state = arguments.next().expect("No state provided");
+
+            let temp = Path::new(&temp);
+            let state = Path::new(&state);
+
+            if !temp.exists() {
+                panic!("Temp directory does not exist");
+            }
+
+            if !state.exists() {
+                panic!("Json file does not exist");
+            }
+
+            let state = fs::read_to_string(state).expect("Failed to read json file");
+            let state = serde_json::from_str::<SerializedState>(state.as_str())
+                .expect("Failed to parse data");
+            let state = State::deserialize(state, temp).expect("Failed to deserialize state");
+            let state: ClipboardState = state.try_into().expect("Failed to convert state");
+
+            let json = serde_json::to_string(&state).expect("Failed to serialize");
+
+            let mut clipboard = Clipboard::new().expect("Failed to create clipboard");
+            clipboard.set_text(json).expect("Failed to set clipboard text");
         }
         "RM" => {
             let dir = arguments.next().expect("No directory provided");

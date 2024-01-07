@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use image::{imageops, ImageBuffer};
 use image::{io::Reader as ImageReader, DynamicImage};
 use png::{Compression, Decoder, Encoder};
@@ -6,6 +7,7 @@ use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::Path;
+use thiserror::Error;
 
 const DMI_VERSION: &str = "4.0";
 
@@ -161,25 +163,13 @@ impl Dmi {
         Ok(dmi)
     }
     pub fn save<P: AsRef<Path>>(&self, path: P) -> DmiResult<()> {
-        let total_frames: u32 = self
+        let total_frames = self
             .states
             .iter()
             .map(|state| state.frames.len() as u32)
-            .sum();
+            .sum::<u32>() as usize;
 
-        let sqrt = if total_frames > 0 {
-            (total_frames as f32).sqrt().ceil()
-        } else {
-            0.
-        };
-        let (width, height) = if total_frames > 0 {
-            (
-                (self.width as f32 * sqrt) as u32,
-                self.height * (total_frames as f32 / sqrt).ceil() as u32,
-            )
-        } else {
-            (self.width, self.height)
-        };
+        let (sqrt, width, height) = optimal_size(total_frames, self.width, self.height);
 
         let mut image_buffer = ImageBuffer::new(width, height);
 
@@ -384,6 +374,39 @@ impl State {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ClipboardState {
+    pub name: String,
+    pub dirs: u32,
+    pub frames: Vec<String>,
+    pub delays: Vec<f32>,
+    pub loop_: u32,
+    pub rewind: bool,
+    pub movement: bool,
+    pub hotspots: Vec<String>,
+}
+
+impl TryFrom<State> for ClipboardState {
+    type Error = ToBase64Error;
+
+    fn try_from(value: State) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name,
+            dirs: value.dirs,
+            frames: value
+                .frames
+                .iter()
+                .map(|frame| frame.to_base64())
+                .collect::<Result<Vec<_>, _>>()?,
+            delays: value.delays,
+            loop_: value.loop_,
+            rewind: value.rewind,
+            movement: value.movement,
+            hotspots: value.hotspots,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializedDmi {
     pub name: String,
     pub width: u32,
@@ -407,40 +430,69 @@ pub struct SerializedState {
 
 type DmiResult<T> = Result<T, DmiError>;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
+#[error(transparent)]
 pub enum DmiError {
-    Io(std::io::Error),
-    Image(image::ImageError),
-    PngDecoding(png::DecodingError),
-    PngEncoding(png::EncodingError),
-    ParseInt(std::num::ParseIntError),
-    ParseFloat(std::num::ParseFloatError),
+    Io(#[from] std::io::Error),
+    Image(#[from] image::ImageError),
+    PngDecoding(#[from] png::DecodingError),
+    PngEncoding(#[from] png::EncodingError),
+    ParseInt(#[from] std::num::ParseIntError),
+    ParseFloat(#[from] std::num::ParseFloatError),
+    #[error("Missing ZTXT chunk")]
     MissingZTXTChunk,
+    #[error("Missing metadata header")]
     MissingMetadataHeader,
+    #[error("Invalid metadata version")]
     InvalidMetadataVersion,
+    #[error("Missing metadata value")]
     MissingMetadataValue,
+    #[error("State info out of order")]
     OutOfOrderStateInfo,
+    #[error("Unknown metadata key")]
     UnknownMetadataKey,
+    #[error("Failed to find available directory")]
     ImageSizeMismatch,
+    #[error("Failed to find available directory")]
     FindDirError,
 }
 
-macro_rules! impl_from_err {
-    ($from:path, $to:ident, $variant:ident) => {
-        impl From<$from> for $to {
-            fn from(err: $from) -> Self {
-                $to::$variant(err)
-            }
-        }
-    };
+trait ToBase64 {
+    type Error;
+    fn to_base64(&self) -> Result<String, Self::Error>;
 }
 
-impl_from_err!(std::num::ParseIntError, DmiError, ParseInt);
-impl_from_err!(std::num::ParseFloatError, DmiError, ParseFloat);
-impl_from_err!(image::ImageError, DmiError, Image);
-impl_from_err!(png::DecodingError, DmiError, PngDecoding);
-impl_from_err!(png::EncodingError, DmiError, PngEncoding);
-impl_from_err!(std::io::Error, DmiError, Io);
+impl ToBase64 for DynamicImage {
+    type Error = ToBase64Error;
+
+    fn to_base64(&self) -> Result<String, Self::Error> {
+        let mut image_data = Vec::new();
+
+        {
+            let image_buffer = self.to_rgba8();
+            let mut writer = BufWriter::new(&mut image_data);
+            let mut encoder = Encoder::new(&mut writer, self.width(), self.height());
+
+            encoder.set_compression(Compression::Best);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+
+            let mut writer = encoder.write_header()?;
+
+            writer.write_image_data(&image_buffer)?;
+        }
+
+        let base64 = general_purpose::STANDARD.encode(image_data);
+        Ok(format!("data:image/png;base64,{}", base64))
+    }
+}
+
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub enum ToBase64Error {
+    Image(#[from] image::ImageError),
+    PngEncoding(#[from] png::EncodingError),
+}
 
 fn find_available_dir<P: AsRef<OsStr>>(path: P) -> Option<String> {
     let mut index: u32 = 0;
@@ -456,4 +508,18 @@ fn find_available_dir<P: AsRef<OsStr>>(path: P) -> Option<String> {
     }
 
     path.to_str().map(|s| s.to_string())
+}
+
+fn optimal_size(frames: usize, width: u32, height: u32) -> (f32, u32, u32) {
+    if frames == 0 {
+        return (0., width, height);
+    }
+
+    let sqrt = (frames as f32).sqrt().ceil();
+    let (width, height) = (
+        (width as f32 * sqrt) as u32,
+        height * (frames as f32 / sqrt).ceil() as u32,
+    );
+
+    (sqrt, width, height)
 }
