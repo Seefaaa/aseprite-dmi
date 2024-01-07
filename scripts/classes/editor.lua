@@ -19,6 +19,7 @@
 --- @field dialog Dialog The dialog object.
 --- @field save_path string|nil The path of the file to be saved.
 --- @field open_path string|nil The path of the file to be opened.
+--- @field image_cache ImageCache The image cache object.
 Editor = {}
 Editor.__index = Editor
 
@@ -51,6 +52,8 @@ function Editor.new(title, filename, dmi)
 	self.canvas_height    = 215
 	self.max_in_a_row     = 1
 	self.max_in_a_column  = 1
+
+	self.image_cache      = ImageCache.new()
 
 	self.beforecommand    = app.events:on("beforecommand", function(ev) self:onbeforecommand(ev) end)
 
@@ -134,7 +137,7 @@ function Editor:open_file(dmi)
 		state_sprite.sprite:close()
 	end
 
-	image_cache:clear()
+	self.image_cache:clear()
 
 	self.scroll = 0
 	self.dmi = nil
@@ -146,7 +149,7 @@ function Editor:open_file(dmi)
 
 	if success then
 		self.dmi = dmi_ --[[@as Dmi]]
-		image_cache:load_previews(self.dmi)
+		self.image_cache:load_previews(self.dmi)
 		self:repaint_states()
 	end
 end
@@ -363,15 +366,28 @@ function Editor:onmouseup(ev)
 			end
 			self.context_widget = nil
 		else
+			local triggered = false
 			for _, widget in ipairs(self.widgets) do
 				local is_mouse_over = widget.bounds:contains(self.mouse.position)
 				if is_mouse_over then
 					if ev.button == MouseButton.LEFT and widget.onleftclick then
+						triggered = true
 						widget.onleftclick(ev)
 					elseif ev.button == MouseButton.RIGHT and widget.onrightclick then
+						triggered = true
 						widget.onrightclick(ev)
 					end
 					self.focused_widget = widget
+				end
+			end
+			if not triggered then
+				if ev.button == MouseButton.RIGHT then
+					self.context_widget = ContextWidget.new(
+						Rectangle(ev.x, ev.y, 0, 0),
+						{
+							{ text = "Paste", onclick = function() self:paste_state() end },
+						}
+					)
 				end
 			end
 		end
@@ -548,7 +564,7 @@ function Editor:repaint_states()
 					normal = { part = "sunken_normal", color = "button_normal_text" },
 					hot = { part = "sunken_focused", color = "button_hot_text" },
 				},
-				image_cache:get(state.frame_key),
+				self.image_cache:get(state.frame_key),
 				function() self:open_state(state) end,
 				function(ev) self:state_context(state, ev) end
 			))
@@ -624,11 +640,10 @@ end
 function Editor:state_context(state, ev)
 	self.context_widget = ContextWidget.new(
 		Rectangle(ev.x, ev.y, 0, 0),
-		state,
 		{
 			{ text = "Properties", onclick = function() self:state_properties(state) end },
 			{ text = "Open",       onclick = function() self:open_state(state) end },
-			{ text = "Copy", onclick = function() self:copy_state(state) end },
+			{ text = "Copy",       onclick = function() self:copy_state(state) end },
 			{ text = "Remove",     onclick = function() self:remove_state(state) end },
 		}
 	)
@@ -644,7 +659,7 @@ function Editor:open_state(state)
 		end
 	end
 
-	local preview_image = image_cache:get(state.frame_key)
+	local preview_image = self.image_cache:get(state.frame_key)
 	local transparentColor = transparent_color(preview_image)
 
 	local sprite = Sprite(ImageSpec {
@@ -680,7 +695,7 @@ function Editor:open_state(state)
 				sprite:newCel(
 					sprite.layers[layer],
 					sprite.frames[frame],
-					index == 1 and image_cache:get(state.frame_key) or
+					index == 1 and self.image_cache:get(state.frame_key) or
 					Image { fromFile = app.fs.joinPath(self.dmi.temp, state.frame_key .. "." .. math.floor(index - 1) .. ".png") },
 					Point(0, 0)
 				)
@@ -713,7 +728,7 @@ function Editor:remove_state(state)
 	end
 
 	table.remove(self.dmi.states, table.index_of(self.dmi.states, state))
-	image_cache:remove(state.frame_key)
+	self.image_cache:remove(state.frame_key)
 	self:repaint_states()
 end
 
@@ -731,6 +746,28 @@ function Editor:copy_state(state)
 	end
 
 	lib:copy_state(self.dmi, state)
+end
+
+--- Creates a new state in the DMI file copied from the clipboard.
+function Editor:paste_state()
+	if not self.dmi then return end
+
+	local success, _, _, output, state = lib:paste_state(self.dmi)
+
+	if success then
+		table.insert(self.dmi.states, state)
+		self.image_cache:load_state(self.dmi, state --[[@as State]])
+		self:repaint_states()
+	else
+		-- local lines = string.split(output, "\n")
+		-- local first_line = table.remove(lines, 1)
+		-- local text = { "Failed to paste state" }
+		-- for _, line in ipairs(lines) do
+		-- 	table.insert(text, line)
+		-- end
+		-- table.insert(text, first_line)
+		-- app.alert { title = self.title, text = text }
+	end
 end
 
 --- Removes unused statesprites from the editor.
@@ -914,7 +951,7 @@ function Editor:set_state_dirs(state, directions)
 								if cel and cel.image then
 									image:drawImage(cel.image, cel.position)
 								else
-									image:drawImage(image_cache:get(state.frame_key), Point(0, 0))
+									image:drawImage(self.image_cache:get(state.frame_key), Point(0, 0))
 								end
 
 								sprite:newCel(layer, frame, image, Point(0, 0))
@@ -934,7 +971,7 @@ function Editor:new_state()
 	local success, _, _, _, state = lib:new_state(self.dmi)
 	if success then
 		table.insert(self.dmi.states, state)
-		image_cache:load_state(self.dmi, state --[[@as State]])
+		self.image_cache:load_state(self.dmi, state --[[@as State]])
 		self:repaint_states()
 	end
 end

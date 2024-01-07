@@ -12,7 +12,6 @@ function init(plugin)
 	end
 
 	lib = Lib.new(app.fs.joinPath(plugin.path, "lib"), app.fs.joinPath(app.fs.tempPath, "aseprite-dmi"))
-	image_cache = ImageCache.new()
 
 	app.events:on("aftercommand", function(ev)
 		if ev.name == "OpenFile" then

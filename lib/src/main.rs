@@ -140,12 +140,45 @@ fn main() {
             let state = serde_json::from_str::<SerializedState>(state.as_str())
                 .expect("Failed to parse data");
             let state = State::deserialize(state, temp).expect("Failed to deserialize state");
-            let state: ClipboardState = state.try_into().expect("Failed to convert state");
+            let state = state.into_clipboard().expect("Failed to convert state");
 
             let json = serde_json::to_string(&state).expect("Failed to serialize");
 
             let mut clipboard = Clipboard::new().expect("Failed to create clipboard");
             clipboard.set_text(json).expect("Failed to set clipboard text");
+        }
+        "PASTESTATE" => {
+            let temp = arguments.next().expect("No temp directory provided");
+            let width: u32 = arguments
+                .next()
+                .expect("No width provided")
+                .parse()
+                .expect("Failed to parse width");
+            let height: u32 = arguments
+                .next()
+                .expect("No height provided")
+                .parse()
+                .expect("Failed to parse height");
+
+            let temp = Path::new(&temp);
+
+            if !temp.exists() {
+                panic!("Temp directory does not exist");
+            }
+
+            let mut clipboard = Clipboard::new().expect("Failed to create clipboard");
+            let state = clipboard
+                .get_text()
+                .expect("Failed to get clipboard text");
+
+            let state = serde_json::from_str::<ClipboardState>(state.as_str())
+                .expect("Failed to parse data");
+            let state = State::from_clipboard(state, width, height).expect("Failed to convert state");
+
+            let state = state.serialize(temp).expect("Failed to serialize state");
+            let json = serde_json::to_string(&state).expect("Failed to serialize");
+
+            print!("{}", json);
         }
         "RM" => {
             let dir = arguments.next().expect("No directory provided");

@@ -37,8 +37,8 @@ function IconWidget.new(editor, bounds, state, icon, onleftclick, onrightclick)
 	self.bounds = bounds
 	self.state = state or { normal = { part = "sunken_normal", color = "button_normal_text" } }
 	self.icon = icon
-	self.onleftclick = onleftclick or function() end
-	self.onrightclick = onrightclick or function() end
+	self.onleftclick = onleftclick or nil
+	self.onrightclick = onrightclick or nil
 
 	return self
 end
@@ -75,8 +75,8 @@ function TextWidget.new(editor, bounds, state, text, text_color, hover_text, onl
 	self.text = text or ""
 	self.text_color = text_color
 	self.hover_text = hover_text
-	self.onleftclick = onleftclick or function() end
-	self.onrightclick = onrightclick or function() end
+	self.onleftclick = onleftclick or nil
+	self.onrightclick = onrightclick or nil
 
 	return self
 end
@@ -106,8 +106,8 @@ function ThemeWidget.new(editor, bounds, state, partId, onleftclick, onrightclic
 	self.bounds = bounds
 	self.state = state or { normal = { part = "sunken_normal", color = "button_normal_text" } }
 	self.partId = partId
-	self.onleftclick = onleftclick or function() end
-	self.onrightclick = onrightclick or function() end
+	self.onleftclick = onleftclick or nil
+	self.onrightclick = onrightclick or nil
 
 	return self
 end
@@ -118,7 +118,6 @@ end
 
 --- @class ContextWidget
 --- @field bounds Rectangle The bounds of the widget.
---- @field state State The state currently being right clicked.
 --- @field buttons ContextButton[] The buttons of the widget.
 --- @field drawn boolean Whether the widget has been drawn.
 --- @field focus number Focused button index.
@@ -127,14 +126,12 @@ ContextWidget.__index = ContextWidget
 
 --- Creates a new ContextWidget.
 --- @param bounds Rectangle The bounds of the widget.
---- @param state State The state currently being right clicked.
 --- @param buttons ContextButton[] The buttons of the widget.
 --- @return ContextWidget widget The newly created ContextWidget.
-function ContextWidget.new(bounds, state, buttons)
+function ContextWidget.new(bounds, buttons)
 	local self = setmetatable({}, ContextWidget)
 
 	self.bounds = bounds
-	self.state = state
 	self.buttons = buttons
 	self.drawn = false
 	self.focus = 0

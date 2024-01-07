@@ -5,7 +5,7 @@ use png::{Compression, Decoder, Encoder};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
 use std::fs::{self, File};
-use std::io::BufWriter;
+use std::io::{BufWriter, Cursor};
 use std::path::Path;
 use thiserror::Error;
 
@@ -294,7 +294,7 @@ pub struct State {
 }
 
 impl State {
-    fn new(name: String) -> State {
+    fn new(name: String) -> Self {
         State {
             name,
             dirs: 1,
@@ -307,7 +307,7 @@ impl State {
             hotspots: Vec::new(),
         }
     }
-    pub fn new_blank(name: String, width: u32, height: u32) -> State {
+    pub fn new_blank(name: String, width: u32, height: u32) -> Self {
         let mut state = Self::new(name);
         state.frames.push(DynamicImage::new_rgba8(width, height));
         state.frame_count = 1;
@@ -351,7 +351,7 @@ impl State {
 
         Ok(state)
     }
-    pub fn deserialize<P: AsRef<OsStr>>(serialized: SerializedState, path: P) -> DmiResult<State> {
+    pub fn deserialize<P: AsRef<OsStr>>(serialized: SerializedState, path: P) -> DmiResult<Self> {
         let mut state = Self {
             name: serialized.name,
             dirs: serialized.dirs,
@@ -371,6 +371,66 @@ impl State {
 
         Ok(state)
     }
+    pub fn from_clipboard(state: ClipboardState, width: u32, height: u32) -> Result<Self, StateFromClipboardError> {
+        let mut frames = Vec::new();
+
+        for frame in state.frames.iter() {
+            let base64 = frame
+                .split(',')
+                .nth(1)
+                .ok_or_else(|| StateFromClipboardError::MissingData)?;
+            let image_data = general_purpose::STANDARD.decode(base64)?;
+            let reader =
+                ImageReader::with_format(Cursor::new(image_data), image::ImageFormat::Png);
+            let mut image = reader.decode()?;
+
+            if image.width() != width || image.height() != height {
+                image = image.resize(width, height, imageops::FilterType::Nearest);
+            }
+
+            frames.push(image);
+        }
+
+        Ok(Self {
+            name: state.name,
+            dirs: state.dirs,
+            frames,
+            frame_count: state.frames.len() as u32 / state.dirs,
+            delays: state.delays,
+            loop_: state.loop_,
+            rewind: state.rewind,
+            movement: state.movement,
+            hotspots: state.hotspots,
+        })
+    }
+    pub fn into_clipboard(self) -> Result<ClipboardState, StateFromClipboardError> {
+        let frames = self
+            .frames
+            .iter()
+            .map(|frame| frame.to_base64())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(ClipboardState {
+            name: self.name,
+            dirs: self.dirs,
+            frames,
+            delays: self.delays,
+            loop_: self.loop_,
+            rewind: self.rewind,
+            movement: self.movement,
+            hotspots: self.hotspots,
+        })
+    }
+}
+
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub enum StateFromClipboardError {
+    #[error("Missing data")]
+    MissingData,
+    DecodeError(#[from] base64::DecodeError),
+    Image(#[from] image::ImageError),
+    ToBase64(#[from] ToBase64Error),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -383,27 +443,6 @@ pub struct ClipboardState {
     pub rewind: bool,
     pub movement: bool,
     pub hotspots: Vec<String>,
-}
-
-impl TryFrom<State> for ClipboardState {
-    type Error = ToBase64Error;
-
-    fn try_from(value: State) -> Result<Self, Self::Error> {
-        Ok(Self {
-            name: value.name,
-            dirs: value.dirs,
-            frames: value
-                .frames
-                .iter()
-                .map(|frame| frame.to_base64())
-                .collect::<Result<Vec<_>, _>>()?,
-            delays: value.delays,
-            loop_: value.loop_,
-            rewind: value.rewind,
-            movement: value.movement,
-            hotspots: value.hotspots,
-        })
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
