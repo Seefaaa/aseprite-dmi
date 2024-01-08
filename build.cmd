@@ -43,6 +43,7 @@ IF EXIST .build (
 mkdir .build
 
 copy package.json .build
+copy LICENSE .build
 
 copy lib\target\%TARGET%\lib.exe .build
 
