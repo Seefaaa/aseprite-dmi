@@ -48,7 +48,7 @@ function new_file()
 			local success, _, _, _, dmi = lib:new_file("untitled", width, height)
 
 			if success then
-				Editor.new("DMI Editor", nil, dmi)
+				Editor.new(DIALOG_NAME, nil, dmi)
 			end
 		end
 	end

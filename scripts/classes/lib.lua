@@ -3,6 +3,10 @@
 --- @class Lib
 --- @field path string The path to the library.
 --- @field temp_dir string The temporary directory.
+--- @field websocket WebSocket The websocket connection.
+--- @field websocket_connected boolean Whether the websocket is connected.
+--- @field websocket_pid string The websocket process ID.
+--- @field listeners { [string]: { on: Websocket.Listener[], once: Websocket.Listener[] } } The websocket listeners.
 Lib = {}
 Lib.__index = Lib
 
@@ -14,7 +18,87 @@ function Lib.new(lib_path, temp_dir)
 	local self = setmetatable({}, Lib)
 	self.path = lib_path
 	self.temp_dir = temp_dir
+	self.listeners = {}
+	self.websocket = WebSocket {
+		url = "ws://127.0.0.1:" .. PORT,
+		deflate = false,
+		onreceive = function(message, data)
+			--- @param event string
+			--- @param data string|nil
+			--- @param error string|nil
+			local handle = function(event, data, error)
+				local listeners = self.listeners[event]
+
+				if listeners then
+					for _, listener in ipairs(listeners.on) do
+						listener(message, data, error)
+					end
+
+					for _, listener in ipairs(listeners.once) do
+						listener(message, data, error)
+					end
+
+					self.listeners[event].once = {}
+				end
+			end
+
+			if message == WebSocketMessageType.OPEN then
+				self.websocket_connected = true
+				handle("open")
+			elseif message == WebSocketMessageType.CLOSE then
+				self.websocket_connected = false
+				handle("close")
+			elseif message == WebSocketMessageType.TEXT then
+				if data then
+					local data = data --[[@as string]]
+
+					print(data)
+
+					if data:starts_with("pid:") then
+						self.websocket_pid = data:sub(5)
+					elseif data:starts_with("{") and data:ends_with("}") then
+						local json_data = json.decode(data) --[[@as {event: string, data?: any, error?: string}]]
+						if json_data.error then
+							print("Error: " .. json_data.error)
+						end
+						handle(json_data.event, json_data.data, json_data.error)
+					end
+				end
+			end
+		end,
+	}
+
+	os.execute(self.path .. " NEWWS " .. PORT)
+	self.websocket:connect()
+
 	return self
+end
+
+--- Adds a listener for the specified event.
+--- @param event string The event name.
+--- @param callback Websocket.Listener The callback function to be executed when the event is triggered.
+function Lib:on(event, callback)
+	if not self.listeners[event] then
+		self.listeners[event] = {
+			on = {},
+			once = {},
+		}
+	end
+
+	table.insert(self.listeners[event].on, callback)
+end
+
+--- Adds a callback function to be executed only once for a specific event.
+--- @param event string The event name.
+--- @param callback Websocket.Listener The callback function to be executed.
+function Lib:once(event, callback)
+	if not self.listeners[event] then
+		self.listeners[event] = {
+			on = {},
+			once = {},
+		}
+	end
+	table.insert(self.listeners[event].once, callback)
 end
 
 --- Executes a command with arguments and returns the result.
@@ -35,13 +119,6 @@ function Lib:call(command, args, silent)
 	---@diagnostic disable-next-line: undefined-field
 	local success, reason, code = handle:close()
 
-	assert(type(success) == "boolean" or type(success) == "nil", "Lib:call: success must be a boolean or nil")
-	assert(type(reason) == "string", "Lib:call: reason must be a string")
-	assert(type(code) == "number", "Lib:call: code must be a number")
-	assert(type(output) == "string", "Lib:call: output must be a string")
-
-	-- print(success, reason, code, output)
-
 	if not success and not silent then
 		self:print_error(code, reason, output)
 	end
@@ -59,14 +136,20 @@ end
 
 --- Opens a DMI file and returns the parsed data.
 --- @param path string The path to the DMI file.
---- @return boolean|nil success Whether the file was opened successfully.
---- @return string reason The reason for any failure in opening the file.
---- @return number code The code returned by the file opening process.
---- @return string output The output of the file opening process.
---- @return Dmi|nil dmi The parsed DMI data, or nil if the file failed to open.
-function Lib:open(path)
-	local success, reason, code, output = self:call("OPEN", '"' .. path .. '" "' .. self.temp_dir .. '"')
-	return success, reason, code, output, success and Dmi.new(json.decode(output)) or nil
+--- @param callback fun(dmi: Dmi, error?: string) The callback function to be called when the file is opened.
+function Lib:open(path, callback)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		if not self.websocket_connected then
+			return false
+		end
+	end
+
+	self.websocket:sendText('openstate "' .. path .. '" "' .. self.temp_dir .. '"')
+
+	self:once("openstate", function(_, data, error)
+		callback(Dmi.new(data), error)
+	end)
 end
 
 --- Saves the DMI data to a json file and calls lib with the path of the json.

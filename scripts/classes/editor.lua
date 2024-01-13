@@ -119,16 +119,6 @@ end
 --- Opens a DMI file and displays it in the editor.
 --- @param dmi Dmi|nil The DMI object to be opened if not passed `Editor.open_path` will be used.
 function Editor:open_file(dmi)
-	local success = true
-	local dmi_ = dmi
-
-	if not dmi then
-		local success, _, _, _, dmi = lib:open(self.open_path)
-		if success then
-			dmi_ = dmi
-		end
-	end
-
 	if self.dmi then
 		lib:remove_dir(self.dmi.temp)
 	end
@@ -147,8 +137,14 @@ function Editor:open_file(dmi)
 
 	self:repaint()
 
-	if success then
-		self.dmi = dmi_ --[[@as Dmi]]
+	if not dmi then
+		lib:open(self.open_path, function(dmi)
+			self.dmi = dmi --[[@as Dmi]]
+			self.image_cache:load_previews(self.dmi)
+			self:repaint_states()
+		end)
+	else
+		self.dmi = dmi --[[@as Dmi]]
 		self.image_cache:load_previews(self.dmi)
 		self:repaint_states()
 	end
