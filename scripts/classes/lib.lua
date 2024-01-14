@@ -218,17 +218,21 @@ end
 --- Copies the provided state using the provided DMI information to the clipboard.
 --- @param dmi Dmi The DMI object containing the necessary information.
 --- @param state State The state to be copied.
-function Lib:copy_state(dmi, state)
-	local data_json = app.fs.joinPath(dmi.temp, "copy.json")
-	local file, errmsg = io.open(data_json, "w+")
+--- @param callback? fun(success: boolean, error?: string) The callback function to be called when the state is copied.
+function Lib:copy_state(dmi, state, callback)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		self:once("open", function()
+			self:copy_state(dmi, state, callback)
+		end)
+		return
+	end
 
-	if file then
-		file:write(json.encode(state))
-		file:close()
-
-		return self:call("COPYSTATE", '"' .. dmi.temp .. '" "' .. data_json .. '"')
-	else
-		print("Error writing to file: " .. errmsg)
+	self.websocket:sendText('copystate "' .. dmi.temp .. '" \'' .. json.encode(state) .. '\'')
+	if callback then
+		self:once("copystate", function(_, _, error)
+			callback(not error, error)
+		end)
 	end
 end
 

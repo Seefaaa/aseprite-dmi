@@ -110,34 +110,29 @@ pub fn new_state(mut arguments: impl Iterator<Item = String>) {
     print!("{}", json);
 }
 
-pub fn copy_state(mut arguments: impl Iterator<Item = String>) {
-    let temp = arguments.next().expect("No temp directory provided");
-    let state = arguments.next().expect("No state provided");
+pub fn copy_state(mut arguments: impl Iterator<Item = String>) -> Result<()> {
+    let temp = arguments
+        .next()
+        .ok_or(anyhow!("No temp directory provided"))?;
+    let state = arguments.next().ok_or(anyhow!("No json provided"))?;
 
     let temp = Path::new(&temp);
-    let state = Path::new(&state);
 
     if !temp.exists() {
-        panic!("Temp directory does not exist");
+        bail!("Temp directory does not exist");
     }
 
-    if !state.exists() {
-        panic!("Json file does not exist");
-    }
+    let state = serde_json::from_str::<SerializedState>(state.as_str())?;
+    let state = State::deserialize(state, temp)?;
+    let state = state.into_clipboard()?;
 
-    let state = fs::read_to_string(state).expect("Failed to read json file");
-    let state =
-        serde_json::from_str::<SerializedState>(state.as_str()).expect("Failed to parse data");
-    let state = State::deserialize(state, temp).expect("Failed to deserialize state");
-    let state = state.into_clipboard().expect("Failed to convert state");
+    let json = serde_json::to_string(&state)?;
 
-    let json = serde_json::to_string(&state).expect("Failed to serialize");
+    let mut clipboard = Clipboard::new()?;
 
-    let mut clipboard = Clipboard::new().expect("Failed to create clipboard");
+    clipboard.set_text(json)?;
 
-    clipboard
-        .set_text(json)
-        .expect("Failed to set clipboard text");
+    Ok(())
 }
 
 pub fn paste_state(mut arguments: impl Iterator<Item = String>) {

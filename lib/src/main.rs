@@ -37,7 +37,9 @@ fn main() {
             commands::new_state(arguments);
         }
         "COPYSTATE" => {
-            commands::copy_state(arguments);
+            if let Err(e) = commands::copy_state(arguments) {
+                eprintln!("{}", e);
+            }
         }
         "PASTESTATE" => {
             commands::paste_state(arguments);
