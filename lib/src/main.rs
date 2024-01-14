@@ -18,8 +18,8 @@ fn main() {
 
     match command.as_str() {
         "OPEN" => match commands::open(arguments) {
-            Ok(json) => {
-                print!("{}", json);
+            Ok(dmi) => {
+                print!("{}", dmi);
             }
             Err(e) => {
                 eprintln!("{}", e);
@@ -41,9 +41,14 @@ fn main() {
                 eprintln!("{}", e);
             }
         }
-        "PASTESTATE" => {
-            commands::paste_state(arguments);
-        }
+        "PASTESTATE" => match commands::paste_state(arguments) {
+            Ok(state) => {
+                print!("{}", state);
+            }
+            Err(e) => {
+                eprintln!("{}", e);
+            }
+        },
         "RM" => {
             commands::rm(arguments);
         }

@@ -748,22 +748,15 @@ end
 function Editor:paste_state()
 	if not self.dmi then return end
 
-	local success, _, _, output, state = lib:paste_state(self.dmi)
-
-	if success then
-		table.insert(self.dmi.states, state)
-		self.image_cache:load_state(self.dmi, state --[[@as State]])
-		self:repaint_states()
-	else
-		-- local lines = string.split(output, "\n")
-		-- local first_line = table.remove(lines, 1)
-		-- local text = { "Failed to paste state" }
-		-- for _, line in ipairs(lines) do
-		-- 	table.insert(text, line)
-		-- end
-		-- table.insert(text, first_line)
-		-- app.alert { title = self.title, text = text }
-	end
+	lib:paste_state(self.dmi, function (state, error)
+		if not error then
+			table.insert(self.dmi.states, state)
+			self.image_cache:load_state(self.dmi, state --[[@as State]])
+			self:repaint_states()
+		else
+			app.alert { title = self.title, text = { "Failed to paste state", error} }
+		end
+	end)
 end
 
 --- Removes unused statesprites from the editor.

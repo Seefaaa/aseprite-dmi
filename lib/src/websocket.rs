@@ -43,13 +43,16 @@ pub fn websocket(mut arguments: impl Iterator<Item = String>) {
                     let message = message.to_text().unwrap();
                     let command = message.split_whitespace().next().unwrap();
 
-                    println!("INCOMING {}", message);
+                    let response = match command {
+                        "openstate" => Some(open_state(message)),
+                        "savestate" => Some(save_state(message)),
+                        "copystate" => Some(copy_state(message)),
+                        "pastestate" => Some(paste_state(message)),
+                        _ => None,
+                    };
 
-                    match command {
-                        "openstate" => open_state(message, &mut websocket),
-                        "savestate" => save_state(message, &mut websocket),
-                        "copystate" => copy_state(message, &mut websocket),
-                        _ => {}
+                    if let Some(response) = response {
+                        websocket.send(response).unwrap();
                     }
                 }
             }
@@ -80,47 +83,62 @@ macro_rules! format_error {
     };
 }
 
-fn open_state(message: &str, websocket: &mut WebSocket<TcpStream>) {
+fn open_state(message: &str) -> Message {
     let args = split_args(message.to_string()).into_iter().skip(1);
 
     match commands::open(args) {
-        Ok(json) => {
-            let json = format_event!("openstate", json);
-            websocket.send(Message::Text(json)).unwrap();
+        Ok(dmi) => {
+            let dmi = format_event!("openstate", dmi);
+            Message::Text(dmi)
         }
         Err(e) => {
             let e = format_error!("openstate", e);
-            websocket.send(Message::Text(e)).unwrap();
+            Message::Text(e)
         }
     }
 }
 
-fn save_state(message: &str, websocket: &mut WebSocket<TcpStream>) {
+fn save_state(message: &str) -> Message {
     let args = split_args(message.to_string()).into_iter().skip(1);
 
     match commands::save(args) {
         Ok(_) => {
             let json = format_event!("savestate");
-            websocket.send(Message::Text(json)).unwrap();
+            Message::Text(json)
         }
         Err(e) => {
             let e = format_error!("savestate", e);
-            websocket.send(Message::Text(e)).unwrap();
+            Message::Text(e)
         }
     }
 }
 
-fn copy_state(message: &str, websocket: &mut WebSocket<TcpStream>) {
+fn copy_state(message: &str) -> Message {
     let args = split_args(message.to_string()).into_iter().skip(1);
 
     match commands::copy_state(args) {
         Ok(_) => {
             let json = format_event!("copystate");
-            websocket.send(Message::Text(json)).unwrap();
+            Message::Text(json)
         }
         Err(e) => {
             let e = format_error!("copystate", e);
-            websocket.send(Message::Text(e)).unwrap();
+            Message::Text(e)
+        }
+    }
+}
+
+fn paste_state(message: &str) -> Message {
+    let args = split_args(message.to_string()).into_iter().skip(1);
+
+    match commands::paste_state(args) {
+        Ok(state) => {
+            let state = format_event!("pastestate", state);
+            Message::Text(state)
+        }
+        Err(e) => {
+            let e = format_error!("pastestate", e);
+            Message::Text(e)
         }
     }
 }

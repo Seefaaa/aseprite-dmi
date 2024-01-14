@@ -135,36 +135,35 @@ pub fn copy_state(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     Ok(())
 }
 
-pub fn paste_state(mut arguments: impl Iterator<Item = String>) {
-    let temp = arguments.next().expect("No temp directory provided");
+pub fn paste_state(mut arguments: impl Iterator<Item = String>) -> Result<String> {
+    let temp = arguments
+        .next()
+        .ok_or(anyhow!("No temp directory provided"))?;
     let width: u32 = arguments
         .next()
-        .expect("No width provided")
-        .parse()
-        .expect("Failed to parse width");
+        .ok_or(anyhow!("No width provided"))?
+        .parse()?;
     let height: u32 = arguments
         .next()
-        .expect("No height provided")
-        .parse()
-        .expect("Failed to parse height");
+        .ok_or(anyhow!("No height provided"))?
+        .parse()?;
 
     let temp = Path::new(&temp);
 
     if !temp.exists() {
-        panic!("Temp directory does not exist");
+        bail!("Temp directory does not exist");
     }
 
-    let mut clipboard = Clipboard::new().expect("Failed to create clipboard");
-    let state = clipboard.get_text().expect("Failed to get clipboard text");
+    let mut clipboard = Clipboard::new()?;
+    let state = clipboard.get_text()?;
 
-    let state =
-        serde_json::from_str::<ClipboardState>(state.as_str()).expect("Failed to parse data");
-    let state = State::from_clipboard(state, width, height).expect("Failed to convert state");
+    let state = serde_json::from_str::<ClipboardState>(state.as_str())?;
+    let state = State::from_clipboard(state, width, height)?;
+    let state = state.serialize(temp)?;
 
-    let state = state.serialize(temp).expect("Failed to serialize state");
-    let json = serde_json::to_string(&state).expect("Failed to serialize");
+    let json = serde_json::to_string(&state)?;
 
-    print!("{}", json);
+    Ok(json)
 }
 
 pub fn rm(mut arguments: impl Iterator<Item = String>) {

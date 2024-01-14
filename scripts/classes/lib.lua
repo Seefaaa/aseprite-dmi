@@ -51,9 +51,6 @@ function Lib.new(lib_path, temp_dir)
 			elseif message == WebSocketMessageType.TEXT then
 				if data then
 					local data = data --[[@as string]]
-
-					print(data)
-
 					if data:starts_with("pid:") then
 						self.websocket_pid = data:sub(5)
 					elseif data:starts_with("{") and data:ends_with("}") then
@@ -136,7 +133,7 @@ end
 
 --- Opens a DMI file and returns the parsed data.
 --- @param path string The path to the DMI file.
---- @param callback fun(dmi: Dmi, error?: string) The callback function to be called when the file is opened.
+--- @param callback fun(dmi?: Dmi, error?: string) The callback function to be called when the file is opened.
 function Lib:open(path, callback)
 	if not self.websocket_connected then
 		self.websocket:connect()
@@ -149,7 +146,7 @@ function Lib:open(path, callback)
 	self.websocket:sendText('openstate "' .. path .. '" "' .. self.temp_dir .. '"')
 
 	self:once("openstate", function(_, data, error)
-		callback(Dmi.new(data), error)
+		callback(not error and Dmi.new(data) or nil, error)
 	end)
 end
 
@@ -238,15 +235,20 @@ end
 
 --- Pastes the state from the clipboard using the provided DMI information.
 --- @param dmi Dmi The DMI object containing the necessary information.
---- @return boolean|nil success True if the state creation was successful, false otherwise.
---- @return string reason The reason for the success or failure.
---- @return number code The code associated with the state creation.
---- @return string output The output generated during the state creation.
---- @return State|nil state The newly created State object, or nil if the creation failed.
-function Lib:paste_state(dmi)
-	local success, reason, code, output = self:call("PASTESTATE",
-		'"' .. dmi.temp .. '"' .. ' ' .. math.floor(dmi.width) .. ' ' .. math.floor(dmi.height), true)
-	return success, reason, code, output, success and State.new(json.decode(output)) or nil
+--- @param callback fun(state?: State, error?: string) The callback function to be called when the state is pasted.
+function Lib:paste_state(dmi, callback)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		self:once("open", function()
+			self:paste_state(dmi, callback)
+		end)
+		return
+	end
+
+	self.websocket:sendText('pastestate "' .. dmi.temp .. '" ' .. math.floor(dmi.width) .. ' ' .. math.floor(dmi.height))
+	self:once("pastestate", function(_, data, error)
+		callback(not error and State.new(data) or nil, error)
+	end)
 end
 
 --- Removes a directory at the specified path.
