@@ -115,11 +115,8 @@ fn process_command(message: &str) -> Option<Message> {
 }
 
 pub fn init(mut arguments: impl Iterator<Item = String>) {
-    let temp_dir = arguments.next().expect("No temp dir provided");
     let file_name = arguments.next().expect("No file name provided");
-
     let current_exe = current_exe().expect("Failed to get self path");
-
     let port = {
         let tcp = TcpListener::bind(("127.0.0.1", 0)).expect("Failed to bind to port");
         tcp.local_addr()
@@ -127,14 +124,14 @@ pub fn init(mut arguments: impl Iterator<Item = String>) {
             .port()
             .to_string()
     };
+    let file_name = Path::new(&file_name);
 
-    let temp_dir = Path::new(&temp_dir);
-
-    if !temp_dir.exists() {
-        create_dir_all(temp_dir).expect("Failed to create temp dir");
+    let parent = file_name.parent();
+    if parent.is_some_and(|p| !p.exists()) {
+        create_dir_all(parent.unwrap()).expect("Failed to create directory");
     }
 
-    write(temp_dir.join(file_name), &port).expect("Failed to write port to file");
+    write(file_name, &port).expect("Failed to write port to file");
 
     let _ = Command::new(current_exe)
         .arg("ws_serve")

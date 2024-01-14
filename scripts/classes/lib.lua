@@ -17,10 +17,11 @@ function Lib.new(lib_path, temp_dir)
 	local self = setmetatable({}, Lib)
 
 	local port = nil
+	local file_name = app.fs.joinPath(temp_dir, "port")
 
-	os.execute(lib_path .. ' ws_init "' .. temp_dir .. '" port')
+	os.execute(lib_path .. ' ws_init "' .. file_name .. '"')
 
-	local handle = io.open(app.fs.joinPath(temp_dir, "port"), "r")
+	local handle = io.open(file_name, "r")
 	if handle then
 		local output = handle:read("*l")
 		local success = handle:close()
