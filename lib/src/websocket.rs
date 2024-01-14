@@ -4,7 +4,8 @@ use std::fs::{create_dir_all, write};
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::process::{self, Command};
-use std::thread::spawn;
+use std::sync::{Arc, Mutex};
+use std::thread::{sleep, spawn};
 use tungstenite::{accept, Message, WebSocket};
 
 use crate::commands;
@@ -19,10 +20,27 @@ pub fn serve(mut arguments: impl Iterator<Item = String>) {
 
     let server = TcpListener::bind(("127.0.0.1", port)).expect("Failed to bind to port");
 
+    let connected_once = Arc::new(Mutex::new(false));
+
+    let connected_once_clone = Arc::clone(&connected_once);
+    spawn(move || {
+        sleep(std::time::Duration::from_secs(30));
+        let connected_once = connected_once_clone.lock().unwrap();
+        if !*connected_once {
+            process::exit(0);
+        }
+    });
+
     for stream in server.incoming() {
         if let Ok(stream) = stream {
+            let connected_once = Arc::clone(&connected_once);
             spawn(move || {
                 if let Ok(mut websocket) = accept(stream) {
+                    {
+                        let mut connections = connected_once.lock().unwrap();
+                        *connections = true;
+                    }
+
                     loop {
                         let message = websocket.read();
 
