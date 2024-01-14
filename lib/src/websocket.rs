@@ -48,6 +48,7 @@ pub fn websocket(mut arguments: impl Iterator<Item = String>) {
                         "savestate" => Some(save_state(message)),
                         "copystate" => Some(copy_state(message)),
                         "pastestate" => Some(paste_state(message)),
+                        "newstate" => Some(new_state(message)),
                         _ => None,
                     };
 
@@ -138,6 +139,21 @@ fn paste_state(message: &str) -> Message {
         }
         Err(e) => {
             let e = format_error!("pastestate", e);
+            Message::Text(e)
+        }
+    }
+}
+
+fn new_state(message: &str) -> Message {
+    let args = split_args(message.to_string()).into_iter().skip(1);
+
+    match commands::new_state(args) {
+        Ok(state) => {
+            let state = format_event!("newstate", state);
+            Message::Text(state)
+        }
+        Err(e) => {
+            let e = format_error!("newstate", e);
             Message::Text(e)
         }
     }

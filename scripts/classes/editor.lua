@@ -748,13 +748,28 @@ end
 function Editor:paste_state()
 	if not self.dmi then return end
 
-	lib:paste_state(self.dmi, function (state, error)
+	lib:paste_state(self.dmi, function(state, error)
 		if not error then
 			table.insert(self.dmi.states, state)
 			self.image_cache:load_state(self.dmi, state --[[@as State]])
 			self:repaint_states()
 		else
-			app.alert { title = self.title, text = { "Failed to paste state", error} }
+			app.alert { title = self.title, text = { "Failed to paste state", error } }
+		end
+	end)
+end
+
+-- Creates a new state for the editor.
+function Editor:new_state()
+	if not self.dmi then return end
+
+	lib:new_state(self.dmi, function(state, error)
+		if not error then
+			table.insert(self.dmi.states, state)
+			self.image_cache:load_state(self.dmi, state --[[@as State]])
+			self:repaint_states()
+		else
+			app.alert { title = self.title, text = { "Failed to create new state", error } }
 		end
 	end)
 end
@@ -956,15 +971,6 @@ function Editor:set_state_dirs(state, directions)
 	end
 end
 
-function Editor:new_state()
-	local success, _, _, _, state = lib:new_state(self.dmi)
-	if success then
-		table.insert(self.dmi.states, state)
-		self.image_cache:load_state(self.dmi, state --[[@as State]])
-		self:repaint_states()
-	end
-end
-
 --- Reorders the layers in the state_sprite based on their names.
 --- Layers with names found in DIRECTION_NAMES are placed in reverse order,
 --- while other layers are placed after the direction layers.
@@ -995,8 +1001,6 @@ end
 function Editor:save()
 	if not self.dmi then return end
 
-	local saving = false
-
 	local save_dialog = Dialog {
 		title = "Save File",
 		parent = self.dialog
@@ -1021,26 +1025,19 @@ function Editor:save()
 	save_dialog:button {
 		text = "Save",
 		onclick = function()
-			if not saving then
-				saving = true
-				lib:save(self.dmi, save_dialog.data["save_dmi_file"], function(success, error)
-					save_dialog:close()
-					if not success then
-						app.alert { title = "Save File", text = { "Failed to save", error } }
-					end
-				end)
-				lib:wait_for("savestate")
-				saving = false
-			end
+			save_dialog:close()
+			lib:save(self.dmi, save_dialog.data["save_dmi_file"], function(success, error)
+				if not success then
+					app.alert { title = "Save File", text = { "Failed to save", error } }
+				end
+			end)
 		end
 	}
 
 	save_dialog:button {
 		text = "Cancel",
 		onclick = function()
-			if not saving then
-				save_dialog:close()
-			end
+			save_dialog:close()
 		end
 	}
 

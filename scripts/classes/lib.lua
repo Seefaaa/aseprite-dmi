@@ -201,15 +201,20 @@ end
 
 --- Creates a new state using the provided DMI information.
 --- @param dmi Dmi The DMI object containing the necessary information.
---- @return boolean|nil success True if the state creation was successful, false otherwise.
---- @return string reason The reason for the success or failure.
---- @return number code The code associated with the state creation.
---- @return string output The output generated during the state creation.
---- @return State|nil state The newly created State object, or nil if the creation failed.
-function Lib:new_state(dmi)
-	local success, reason, code, output = self:call("NEWSTATE",
-		'"' .. dmi.temp .. '"' .. ' ' .. math.floor(dmi.width) .. ' ' .. math.floor(dmi.height))
-	return success, reason, code, output, success and State.new(json.decode(output)) or nil
+--- @param callback fun(state?: State, error?: string) The callback function to be called when the state is created.
+function Lib:new_state(dmi, callback)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		self:once("open", function()
+			self:new_state(dmi, callback)
+		end)
+		return
+	end
+
+	self.websocket:sendText('newstate "' .. dmi.temp .. '" ' .. math.floor(dmi.width) .. ' ' .. math.floor(dmi.height))
+	self:once("newstate", function(_, data, error)
+		callback(not error and State.new(data) or nil, error)
+	end)
 end
 
 --- Copies the provided state using the provided DMI information to the clipboard.

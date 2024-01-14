@@ -34,7 +34,14 @@ fn main() {
             commands::new(arguments);
         }
         "NEWSTATE" => {
-            commands::new_state(arguments);
+            match commands::new_state(arguments) {
+                Ok(state) => {
+                    print!("{}", state);
+                }
+                Err(e) => {
+                    eprintln!("{}", e);
+                }
+            }
         }
         "COPYSTATE" => {
             if let Err(e) = commands::copy_state(arguments) {

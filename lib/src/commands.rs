@@ -23,11 +23,10 @@ pub fn open(mut arguments: impl Iterator<Item = String>) -> Result<String> {
             create_dir_all(output)?;
         }
 
-        let dmi = Dmi::open(file)?;
-        let dmi = dmi.serialize(output)?;
-        let json = serde_json::to_string(&dmi)?;
+        let dmi = Dmi::open(file)?.serialize(output)?;
+        let dmi = serde_json::to_string(&dmi)?;
 
-        Ok(json)
+        Ok(dmi)
     } else {
         bail!("Input path must be a file");
     }
@@ -84,30 +83,29 @@ pub fn new(mut arguments: impl Iterator<Item = String>) {
     print!("{}", json);
 }
 
-pub fn new_state(mut arguments: impl Iterator<Item = String>) {
-    let temp = arguments.next().expect("No temp directory provided");
+pub fn new_state(mut arguments: impl Iterator<Item = String>) -> Result<String> {
+    let temp = arguments
+        .next()
+        .ok_or(anyhow!("No temp directory provided"))?;
     let width: u32 = arguments
         .next()
-        .expect("No width provided")
-        .parse()
-        .expect("Failed to parse width");
+        .ok_or(anyhow!("No width provided"))?
+        .parse()?;
     let height: u32 = arguments
         .next()
-        .expect("No height provided")
-        .parse()
-        .expect("Failed to parse height");
+        .ok_or(anyhow!("No height provided"))?
+        .parse()?;
 
     let temp = Path::new(&temp);
 
     if !temp.exists() {
-        panic!("Temp directory does not exist");
+        bail!("Temp directory does not exist");
     }
 
-    let state = State::new_blank(String::default(), width, height);
-    let state = state.serialize(temp).expect("Failed to serialize state");
-    let json = serde_json::to_string(&state).expect("Failed to serialize");
+    let state = State::new_blank(String::default(), width, height).serialize(temp)?;
+    let state = serde_json::to_string(&state)?;
 
-    print!("{}", json);
+    Ok(state)
 }
 
 pub fn copy_state(mut arguments: impl Iterator<Item = String>) -> Result<()> {
@@ -123,14 +121,11 @@ pub fn copy_state(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     }
 
     let state = serde_json::from_str::<SerializedState>(state.as_str())?;
-    let state = State::deserialize(state, temp)?;
-    let state = state.into_clipboard()?;
-
-    let json = serde_json::to_string(&state)?;
+    let state = State::deserialize(state, temp)?.into_clipboard()?;
+    let state = serde_json::to_string(&state)?;
 
     let mut clipboard = Clipboard::new()?;
-
-    clipboard.set_text(json)?;
+    clipboard.set_text(state)?;
 
     Ok(())
 }
@@ -158,12 +153,10 @@ pub fn paste_state(mut arguments: impl Iterator<Item = String>) -> Result<String
     let state = clipboard.get_text()?;
 
     let state = serde_json::from_str::<ClipboardState>(state.as_str())?;
-    let state = State::from_clipboard(state, width, height)?;
-    let state = state.serialize(temp)?;
+    let state = State::from_clipboard(state, width, height)?.serialize(temp)?;
+    let state = serde_json::to_string(&state)?;
 
-    let json = serde_json::to_string(&state)?;
-
-    Ok(json)
+    Ok(state)
 }
 
 pub fn rm(mut arguments: impl Iterator<Item = String>) {
