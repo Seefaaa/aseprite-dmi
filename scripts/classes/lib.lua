@@ -143,9 +143,9 @@ function Lib:open(path, callback)
 		return
 	end
 
-	self.websocket:sendText('openstate "' .. path .. '" "' .. self.temp_dir .. '"')
+	self.websocket:sendText('openfile "' .. path .. '" "' .. self.temp_dir .. '"')
 
-	self:once("openstate", function(_, data, error)
+	self:once("openfile", function(_, data, error)
 		callback(not error and Dmi.new(data) or nil, error)
 	end)
 end
@@ -163,8 +163,8 @@ function Lib:save(dmi, path, callback)
 		return
 	end
 
-	self.websocket:sendText('savestate "' .. path .. '" \'' .. json.encode(dmi) .. '\'')
-	self:once("savestate", function(_, _, error)
+	self.websocket:sendText('savefile "' .. path .. '" \'' .. json.encode(dmi) .. '\'')
+	self:once("savefile", function(_, _, error)
 		callback(not error, error)
 	end)
 end
@@ -188,15 +188,20 @@ end
 --- @param name string The name of the file.
 --- @param width number The width of the file.
 --- @param height number The height of the file.
---- @return boolean|nil success Whether the file creation was successful.
---- @return string reason The reason for any failure in creating the file.
---- @return number code The code returned by the file creation process.
---- @return string output The output of the file creation process.
---- @return Dmi|nil dmi The newly created Dmi object, or nil if creation failed.
-function Lib:new_file(name, width, height)
-	local success, reason, code, output = self:call("NEW",
-		'"' .. self.temp_dir .. '" "' .. name .. '" ' .. width .. ' ' .. height)
-	return success, reason, code, output, success and Dmi.new(json.decode(output)) or nil
+--- @param callback fun(dmi?: Dmi, error?: string) The callback function to be called when the file is created.
+function Lib:new_file(name, width, height, callback)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		self:once("open", function()
+			self:new_file(name, width, height, callback)
+		end)
+		return
+	end
+
+	self.websocket:sendText('newfile "' .. self.temp_dir .. '" "' .. name .. '" ' .. width .. ' ' .. height)
+	self:once("newfile", function(_, data, error)
+		callback(not error and Dmi.new(data) or nil, error)
+	end)
 end
 
 --- Creates a new state using the provided DMI information.

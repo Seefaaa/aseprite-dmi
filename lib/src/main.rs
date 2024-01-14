@@ -17,7 +17,7 @@ fn main() {
     let command = arguments.next().expect("No command provided");
 
     match command.as_str() {
-        "OPEN" => match commands::open(arguments) {
+        "OPEN" => match commands::open_file(arguments) {
             Ok(dmi) => {
                 print!("{}", dmi);
             }
@@ -26,23 +26,26 @@ fn main() {
             }
         },
         "SAVE" => {
-            if let Err(e) = commands::save(arguments) {
+            if let Err(e) = commands::save_file(arguments) {
                 eprintln!("{}", e);
             }
         }
-        "NEW" => {
-            commands::new(arguments);
-        }
-        "NEWSTATE" => {
-            match commands::new_state(arguments) {
-                Ok(state) => {
-                    print!("{}", state);
-                }
-                Err(e) => {
-                    eprintln!("{}", e);
-                }
+        "NEW" => match commands::new_file(arguments) {
+            Ok(dmi) => {
+                print!("{}", dmi);
             }
-        }
+            Err(e) => {
+                eprintln!("{}", e);
+            }
+        },
+        "NEWSTATE" => match commands::new_state(arguments) {
+            Ok(state) => {
+                print!("{}", state);
+            }
+            Err(e) => {
+                eprintln!("{}", e);
+            }
+        },
         "COPYSTATE" => {
             if let Err(e) = commands::copy_state(arguments) {
                 eprintln!("{}", e);
@@ -57,7 +60,7 @@ fn main() {
             }
         },
         "RM" => {
-            commands::rm(arguments);
+            commands::remove_dir(arguments);
         }
         "NEWWS" => {
             let current_exe = current_exe().expect("Failed to get self path");

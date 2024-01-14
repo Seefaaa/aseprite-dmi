@@ -15,7 +15,6 @@ pub fn websocket(mut arguments: impl Iterator<Item = String>) {
         spawn(move || {
             let mut websocket = accept(stream.unwrap()).unwrap();
 
-            websocket.send(Message::Ping(Vec::new())).unwrap();
             websocket
                 .send(Message::Text(format!("pid:{}", process::id())))
                 .unwrap();
@@ -25,18 +24,12 @@ pub fn websocket(mut arguments: impl Iterator<Item = String>) {
 
                 if message.is_err() {
                     exit(&mut websocket);
-                    break;
                 }
 
                 let message = message.unwrap();
 
                 if message.is_close() {
                     exit(&mut websocket);
-                    break;
-                }
-
-                if message.is_pong() {
-                    println!("RECEIVED PONG");
                 }
 
                 if message.is_text() {
@@ -44,11 +37,12 @@ pub fn websocket(mut arguments: impl Iterator<Item = String>) {
                     let command = message.split_whitespace().next().unwrap();
 
                     let response = match command {
-                        "openstate" => Some(open_state(message)),
-                        "savestate" => Some(save_state(message)),
+                        "newfile" => Some(new_file(message)),
+                        "openfile" => Some(open_file(message)),
+                        "savefile" => Some(save_file(message)),
+                        "newstate" => Some(new_state(message)),
                         "copystate" => Some(copy_state(message)),
                         "pastestate" => Some(paste_state(message)),
-                        "newstate" => Some(new_state(message)),
                         _ => None,
                     };
 
@@ -61,12 +55,11 @@ pub fn websocket(mut arguments: impl Iterator<Item = String>) {
     }
 }
 
-fn exit(websocket: &mut WebSocket<TcpStream>) {
+fn exit(websocket: &mut WebSocket<TcpStream>) -> ! {
     if let Ok(_) = websocket.close(None) {
         websocket.flush().unwrap();
     }
-    println!("EXITING");
-    // process::exit(0);
+    process::exit(0);
 }
 
 macro_rules! format_event {
@@ -84,31 +77,61 @@ macro_rules! format_error {
     };
 }
 
-fn open_state(message: &str) -> Message {
+fn new_file(message: &str) -> Message {
     let args = split_args(message.to_string()).into_iter().skip(1);
 
-    match commands::open(args) {
+    match commands::new_file(args) {
         Ok(dmi) => {
-            let dmi = format_event!("openstate", dmi);
+            let dmi = format_event!("newfile", dmi);
             Message::Text(dmi)
         }
         Err(e) => {
-            let e = format_error!("openstate", e);
+            let e = format_error!("newfile", e);
             Message::Text(e)
         }
     }
 }
 
-fn save_state(message: &str) -> Message {
+fn open_file(message: &str) -> Message {
     let args = split_args(message.to_string()).into_iter().skip(1);
 
-    match commands::save(args) {
+    match commands::open_file(args) {
+        Ok(dmi) => {
+            let dmi = format_event!("openfile", dmi);
+            Message::Text(dmi)
+        }
+        Err(e) => {
+            let e = format_error!("openfile", e);
+            Message::Text(e)
+        }
+    }
+}
+
+fn save_file(message: &str) -> Message {
+    let args = split_args(message.to_string()).into_iter().skip(1);
+
+    match commands::save_file(args) {
         Ok(_) => {
-            let json = format_event!("savestate");
+            let json = format_event!("savefile");
             Message::Text(json)
         }
         Err(e) => {
-            let e = format_error!("savestate", e);
+            let e = format_error!("savefile", e);
+            Message::Text(e)
+        }
+    }
+}
+
+fn new_state(message: &str) -> Message {
+    let args = split_args(message.to_string()).into_iter().skip(1);
+
+    match commands::new_state(args) {
+        Ok(state) => {
+            let state = format_event!("newstate", state);
+            Message::Text(state)
+        }
+        Err(e) => {
+            let e = format_error!("newstate", e);
             Message::Text(e)
         }
     }
@@ -139,21 +162,6 @@ fn paste_state(message: &str) -> Message {
         }
         Err(e) => {
             let e = format_error!("pastestate", e);
-            Message::Text(e)
-        }
-    }
-}
-
-fn new_state(message: &str) -> Message {
-    let args = split_args(message.to_string()).into_iter().skip(1);
-
-    match commands::new_state(args) {
-        Ok(state) => {
-            let state = format_event!("newstate", state);
-            Message::Text(state)
-        }
-        Err(e) => {
-            let e = format_error!("newstate", e);
             Message::Text(e)
         }
     }

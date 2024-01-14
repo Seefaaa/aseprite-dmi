@@ -45,11 +45,13 @@ function new_file()
 
 			app.command.CloseFile { ui = false }
 
-			local success, _, _, _, dmi = lib:new_file("untitled", width, height)
-
-			if success then
-				Editor.new(DIALOG_NAME, nil, dmi)
-			end
+			lib:new_file("untitled", width, height, function(dmi, error)
+				if not error then
+					Editor.new(DIALOG_NAME, nil, dmi)
+				else
+					app.alert { title = DIALOG_NAME, text = { "Failed to create new DMI file", error } }
+				end
+			end)
 		end
 	end
 end

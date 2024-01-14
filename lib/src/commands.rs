@@ -7,7 +7,25 @@ use std::path::Path;
 
 use crate::dmi::{ClipboardState, Dmi, SerializedDmi, SerializedState, State};
 
-pub fn open(mut arguments: impl Iterator<Item = String>) -> Result<String> {
+pub fn new_file(mut arguments: impl Iterator<Item = String>) -> Result<String> {
+    let out_dir = arguments.next().ok_or(anyhow!("No output provided"))?;
+    let name = arguments.next().ok_or(anyhow!("No name provided"))?;
+    let width: u32 = arguments.next().expect("No width provided").parse()?;
+    let height: u32 = arguments.next().expect("No height provided").parse()?;
+
+    let out_dir = Path::new(&out_dir);
+
+    if !out_dir.exists() {
+        create_dir_all(out_dir)?;
+    }
+
+    let dmi = Dmi::new(name, width, height).serialize(out_dir)?;
+    let dmi = serde_json::to_string(&dmi)?;
+
+    Ok(dmi)
+}
+
+pub fn open_file(mut arguments: impl Iterator<Item = String>) -> Result<String> {
     let file = arguments.next().ok_or(anyhow!("No input provided"))?;
     let out_dir = arguments.next().ok_or(anyhow!("No output provided"))?;
 
@@ -32,7 +50,7 @@ pub fn open(mut arguments: impl Iterator<Item = String>) -> Result<String> {
     }
 }
 
-pub fn save(mut arguments: impl Iterator<Item = String>) -> Result<()> {
+pub fn save_file(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     let path = arguments.next().ok_or(anyhow!("No path provided"))?;
     let dmi = arguments.next().ok_or(anyhow!("No json provided"))?;
 
@@ -54,33 +72,6 @@ pub fn save(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     dmi.save(path)?;
 
     Ok(())
-}
-
-pub fn new(mut arguments: impl Iterator<Item = String>) {
-    let out_dir = arguments.next().expect("No output provided");
-    let name = arguments.next().expect("No name provided");
-    let width: u32 = arguments
-        .next()
-        .expect("No width provided")
-        .parse()
-        .expect("Failed to parse width");
-    let height: u32 = arguments
-        .next()
-        .expect("No height provided")
-        .parse()
-        .expect("Failed to parse height");
-
-    let out_dir = Path::new(&out_dir);
-
-    if !out_dir.exists() {
-        create_dir_all(out_dir).expect("Failed to create output directory");
-    }
-
-    let dmi = Dmi::new(name, width, height);
-    let dmi = dmi.serialize(out_dir).expect("Failed to serialize DMI");
-    let json = serde_json::to_string(&dmi).expect("Failed to serialize");
-
-    print!("{}", json);
 }
 
 pub fn new_state(mut arguments: impl Iterator<Item = String>) -> Result<String> {
@@ -159,7 +150,7 @@ pub fn paste_state(mut arguments: impl Iterator<Item = String>) -> Result<String
     Ok(state)
 }
 
-pub fn rm(mut arguments: impl Iterator<Item = String>) {
+pub fn remove_dir(mut arguments: impl Iterator<Item = String>) {
     let dir = arguments.next().expect("No directory provided");
     let dir = Path::new(&dir);
 
