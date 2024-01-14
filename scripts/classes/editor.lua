@@ -1002,6 +1002,8 @@ end
 function Editor:save()
 	if not self.dmi then return end
 
+	local saving = false
+
 	local save_dialog = Dialog {
 		title = "Save File",
 		parent = self.dialog
@@ -1026,20 +1028,26 @@ function Editor:save()
 	save_dialog:button {
 		text = "Save",
 		onclick = function()
-			local success = lib:save(self.dmi, save_dialog.data["save_dmi_file"])
-
-			if not success then
-				app.alert { title = "Save File", text = "Failed to save" }
+			if not saving then
+				saving = true
+				lib:save(self.dmi, save_dialog.data["save_dmi_file"], function(success, error)
+					save_dialog:close()
+					if not success then
+						app.alert { title = "Save File", text = { "Failed to save", error } }
+					end
+				end)
+				lib:wait_for("savestate")
+				saving = false
 			end
-
-			save_dialog:close()
 		end
 	}
 
 	save_dialog:button {
 		text = "Cancel",
 		onclick = function()
-			save_dialog:close()
+			if not saving then
+				save_dialog:close()
+			end
 		end
 	}
 

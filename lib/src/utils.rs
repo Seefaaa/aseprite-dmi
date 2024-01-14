@@ -3,22 +3,34 @@ pub fn split_args(string: String) -> Vec<String> {
 
     let mut parts_quotes: Vec<String> = Vec::new();
     let mut inside_quotes = false;
+    let mut inside_single_quotes = false;
     let mut current_part = String::new();
 
     for char in input_string.chars() {
         match char {
             '"' => {
-                inside_quotes = !inside_quotes;
-                if !inside_quotes {
+                if !inside_single_quotes {
+                    inside_quotes = !inside_quotes;
+                    if !inside_quotes {
+                        parts_quotes.push(current_part.clone());
+                        current_part.clear();
+                    }
+                } else {
+                    current_part.push(char);
+                }
+            }
+            '\'' => {
+                inside_single_quotes = !inside_single_quotes;
+                if !inside_single_quotes {
                     parts_quotes.push(current_part.clone());
                     current_part.clear();
                 }
             }
             ' ' => {
-                if !inside_quotes && !current_part.is_empty() {
+                if !inside_quotes && !inside_single_quotes && !current_part.is_empty() {
                     parts_quotes.push(current_part.clone());
                     current_part.clear();
-                } else if inside_quotes && !current_part.is_empty() {
+                } else if inside_quotes || inside_single_quotes && !current_part.is_empty() {
                     current_part.push(char);
                 }
             }

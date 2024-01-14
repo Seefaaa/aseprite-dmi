@@ -68,7 +68,6 @@ function exit(plugin)
 	if lib then
 		lib:remove_dir(lib.temp_dir)
 		if lib.websocket_connected then
-			lib.websocket:sendText("exit")
 			lib.websocket:close()
 		end
 	end

@@ -140,9 +140,10 @@ end
 function Lib:open(path, callback)
 	if not self.websocket_connected then
 		self.websocket:connect()
-		if not self.websocket_connected then
-			return false
-		end
+		self:once("open", function()
+			self:open(path, callback)
+		end)
+		return
 	end
 
 	self.websocket:sendText('openstate "' .. path .. '" "' .. self.temp_dir .. '"')
@@ -155,17 +156,34 @@ end
 --- Saves the DMI data to a json file and calls lib with the path of the json.
 --- @param dmi Dmi The DMI data to be saved.
 --- @param path string The path where the DMI data will be saved.
-function Lib:save(dmi, path)
-	local data_json = app.fs.joinPath(dmi.temp, "data.json")
-	local file, errmsg = io.open(data_json, "w+")
+--- @param callback fun(success: boolean, error?: string) The callback function to be called when the file is saved.
+function Lib:save(dmi, path, callback)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		self:once("open", function()
+			self:save(dmi, path, callback)
+		end)
+		return
+	end
 
-	if file then
-		file:write(json.encode(dmi))
-		file:close()
+	self.websocket:sendText('savestate "' .. path .. '" \'' .. json.encode(dmi) .. '\'')
+	self:once("savestate", function(_, _, error)
+		callback(not error, error)
+	end)
+end
 
-		return self:call("SAVE", '"' .. path .. '" "' .. data_json .. '"')
-	else
-		print("Error writing to file: " .. errmsg)
+--- Waits for a specified event to occur.
+--- @param event string The event to wait for.
+function Lib:wait_for(event)
+	local startTime = os.clock()
+	local break_ = false
+	self:once(event, function()
+		break_ = true
+	end)
+	while true do
+		if break_ or os.clock() - startTime >= WS_TIMEOUT then
+			break
+		end
 	end
 end
 
