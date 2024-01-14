@@ -211,7 +211,7 @@ end
 --- @field minconnectwait? number
 --- @field maxconnectwait? number
 
---- @alias Websocket.Listener fun(message: WebSocketMessageType, data: any|nil, error: string|nil)
+--- @alias Websocket.Listener fun(data: any|nil, error: string|nil)
 
 if not WebSocket then
 	--- Creates a new WebSocket object.

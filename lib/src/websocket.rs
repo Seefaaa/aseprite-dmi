@@ -1,58 +1,54 @@
+use anyhow::anyhow;
+use std::env::current_exe;
+use std::fs::{create_dir_all, write};
 use std::net::{TcpListener, TcpStream};
-use std::process;
+use std::path::Path;
+use std::process::{self, Command};
 use std::thread::spawn;
 use tungstenite::{accept, Message, WebSocket};
 
 use crate::commands;
 use crate::utils::split_args;
 
-pub fn websocket(mut arguments: impl Iterator<Item = String>) {
-    let port = arguments.next().expect("No port provided");
+pub fn serve(mut arguments: impl Iterator<Item = String>) {
+    let port = arguments
+        .next()
+        .expect("No port provided")
+        .parse::<u16>()
+        .expect("Invalid port");
 
-    let server = TcpListener::bind(format!("127.0.0.1:{}", port)).expect("Failed to bind to port");
+    let server = TcpListener::bind(("127.0.0.1", port)).expect("Failed to bind to port");
 
     for stream in server.incoming() {
-        spawn(move || {
-            let mut websocket = accept(stream.unwrap()).unwrap();
+        if let Ok(stream) = stream {
+            spawn(move || {
+                if let Ok(mut websocket) = accept(stream) {
+                    loop {
+                        let message = websocket.read();
 
-            websocket
-                .send(Message::Text(format!("pid:{}", process::id())))
-                .unwrap();
+                        if message.is_err() {
+                            exit(&mut websocket);
+                        }
 
-            loop {
-                let message = websocket.read();
+                        let message = message.unwrap();
 
-                if message.is_err() {
-                    exit(&mut websocket);
-                }
+                        if message.is_close() {
+                            exit(&mut websocket);
+                        }
 
-                let message = message.unwrap();
+                        if message.is_text() {
+                            let response = process_command(message.to_text().unwrap());
 
-                if message.is_close() {
-                    exit(&mut websocket);
-                }
-
-                if message.is_text() {
-                    let message = message.to_text().unwrap();
-                    let command = message.split_whitespace().next().unwrap();
-
-                    let response = match command {
-                        "newfile" => Some(new_file(message)),
-                        "openfile" => Some(open_file(message)),
-                        "savefile" => Some(save_file(message)),
-                        "newstate" => Some(new_state(message)),
-                        "copystate" => Some(copy_state(message)),
-                        "pastestate" => Some(paste_state(message)),
-                        "removedir" => Some(remove_dir(message)),
-                        _ => None,
-                    };
-
-                    if let Some(response) = response {
-                        websocket.send(response).unwrap();
+                            if let Some(response) = response {
+                                if let Err(e) = websocket.send(response) {
+                                    eprintln!("{}", e);
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
     }
 }
 
@@ -64,11 +60,12 @@ fn exit(websocket: &mut WebSocket<TcpStream>) -> ! {
 }
 
 macro_rules! format_event {
-    ($event:expr) => {
-        format!("{{\"event\":\"{}\"}}", $event)
-    };
     ($event:expr, $data:expr) => {
-        format!("{{\"event\":\"{}\",\"data\":{}}}", $event, $data)
+        if $data.is_empty() {
+            format!("{{\"event\":\"{}\"}}", $event)
+        } else {
+            format!("{{\"event\":\"{}\",\"data\":{}}}", $event, $data)
+        }
     };
 }
 
@@ -78,107 +75,52 @@ macro_rules! format_error {
     };
 }
 
-fn new_file(message: &str) -> Message {
-    let args = split_args(message.to_string()).into_iter().skip(1);
+fn process_command(message: &str) -> Option<Message> {
+    let mut args = split_args(message.to_string()).into_iter();
+    let command_name = args.next()?.to_lowercase();
 
-    match commands::new_file(args) {
-        Ok(dmi) => {
-            let dmi = format_event!("newfile", dmi);
-            Message::Text(dmi)
-        }
-        Err(e) => {
-            let e = format_error!("newfile", e);
-            Message::Text(e)
-        }
-    }
+    let result = match command_name.as_str() {
+        "newfile" => commands::new_file(args),
+        "openfile" => commands::open_file(args),
+        "savefile" => commands::save_file(args).map(|_| String::default()),
+        "newstate" => commands::new_state(args),
+        "copystate" => commands::copy_state(args).map(|_| String::default()),
+        "pastestate" => commands::paste_state(args),
+        "removedir" => commands::remove_dir(args).map(|_| String::default()),
+        _ => Err(anyhow!("Unknown command")),
+    };
+
+    Some(match result {
+        Ok(data) => Message::Text(format_event!(command_name, data)),
+        Err(error) => Message::Text(format_error!(command_name, error)),
+    })
 }
 
-fn open_file(message: &str) -> Message {
-    let args = split_args(message.to_string()).into_iter().skip(1);
+pub fn init(mut arguments: impl Iterator<Item = String>) {
+    let temp_dir = arguments.next().expect("No temp dir provided");
+    let file_name = arguments.next().expect("No file name provided");
 
-    match commands::open_file(args) {
-        Ok(dmi) => {
-            let dmi = format_event!("openfile", dmi);
-            Message::Text(dmi)
-        }
-        Err(e) => {
-            let e = format_error!("openfile", e);
-            Message::Text(e)
-        }
+    let current_exe = current_exe().expect("Failed to get self path");
+
+    let port = {
+        let tcp = TcpListener::bind(("127.0.0.1", 0)).expect("Failed to bind to port");
+        tcp.local_addr()
+            .expect("Failed to get local address")
+            .port()
+            .to_string()
+    };
+
+    let temp_dir = Path::new(&temp_dir);
+
+    if !temp_dir.exists() {
+        create_dir_all(temp_dir).expect("Failed to create temp dir");
     }
-}
 
-fn save_file(message: &str) -> Message {
-    let args = split_args(message.to_string()).into_iter().skip(1);
+    write(temp_dir.join(file_name), &port).expect("Failed to write port to file");
 
-    match commands::save_file(args) {
-        Ok(_) => {
-            let json = format_event!("savefile");
-            Message::Text(json)
-        }
-        Err(e) => {
-            let e = format_error!("savefile", e);
-            Message::Text(e)
-        }
-    }
-}
-
-fn new_state(message: &str) -> Message {
-    let args = split_args(message.to_string()).into_iter().skip(1);
-
-    match commands::new_state(args) {
-        Ok(state) => {
-            let state = format_event!("newstate", state);
-            Message::Text(state)
-        }
-        Err(e) => {
-            let e = format_error!("newstate", e);
-            Message::Text(e)
-        }
-    }
-}
-
-fn copy_state(message: &str) -> Message {
-    let args = split_args(message.to_string()).into_iter().skip(1);
-
-    match commands::copy_state(args) {
-        Ok(_) => {
-            let json = format_event!("copystate");
-            Message::Text(json)
-        }
-        Err(e) => {
-            let e = format_error!("copystate", e);
-            Message::Text(e)
-        }
-    }
-}
-
-fn paste_state(message: &str) -> Message {
-    let args = split_args(message.to_string()).into_iter().skip(1);
-
-    match commands::paste_state(args) {
-        Ok(state) => {
-            let state = format_event!("pastestate", state);
-            Message::Text(state)
-        }
-        Err(e) => {
-            let e = format_error!("pastestate", e);
-            Message::Text(e)
-        }
-    }
-}
-
-fn remove_dir(message: &str) -> Message {
-    let args = split_args(message.to_string()).into_iter().skip(1);
-
-    match commands::remove_dir(args) {
-        Ok(_) => {
-            let json = format_event!("removedir");
-            Message::Text(json)
-        }
-        Err(e) => {
-            let e = format_error!("removedir", e);
-            Message::Text(e)
-        }
-    }
+    let _ = Command::new(current_exe)
+        .arg("ws_serve")
+        .arg(port)
+        .spawn()
+        .expect("Failed to spawn child");
 }

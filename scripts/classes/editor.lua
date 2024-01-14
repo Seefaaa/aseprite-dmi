@@ -138,7 +138,7 @@ function Editor:open_file(dmi)
 	self:repaint()
 
 	if not dmi then
-		lib:open(self.open_path, function(dmi)
+		lib:open_file(self.open_path, function(dmi)
 			self.dmi = dmi --[[@as Dmi]]
 			self.image_cache:load_previews(self.dmi)
 			self:repaint_states()
@@ -1026,7 +1026,7 @@ function Editor:save()
 		text = "Save",
 		onclick = function()
 			save_dialog:close()
-			lib:save(self.dmi, save_dialog.data["save_dmi_file"], function(success, error)
+			lib:save_file(self.dmi, save_dialog.data["save_dmi_file"], function(success, error)
 				if not success then
 					app.alert { title = "Save File", text = { "Failed to save", error } }
 				end

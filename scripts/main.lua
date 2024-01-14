@@ -46,29 +46,14 @@ function init(plugin)
 		onclick = new_file,
 	}
 
-	plugin:newCommand {
-		id = "dmi_ws_test",
-		title = "WS Test",
-		group = "dmi_editor",
-		onclick = function()
-			if not lib then
-				lib = Lib.new(app.fs.joinPath(plugin.path, LIB_BIN), app.fs.joinPath(app.fs.tempPath, TEMP_NAME))
-			end
-
-			lib:on("open", function()
-				lib.websocket:sendText("Hello, world!")
-			end)
-		end,
-	}
 end
 
 --- Exits the plugin. Called when the plugin is removed or Aseprite is closed.
 --- @param plugin Plugin The plugin object.
 function exit(plugin)
 	if lib then
-		lib:remove_dir(lib.temp_dir)
-		if lib.websocket_connected then
+		lib:remove_dir(lib.temp_dir, function()
 			lib.websocket:close()
-		end
+		end)
 	end
 end
