@@ -204,6 +204,24 @@ if not Palette then
 	end
 end
 
+--- @class WebSocket.Params
+--- @field url string
+--- @field deflate boolean
+--- @field onreceive Websocket.Listener
+--- @field minconnectwait? number
+--- @field maxconnectwait? number
+
+--- @alias Websocket.Listener fun(data: any|nil, error: string|nil)
+
+if not WebSocket then
+	--- Creates a new WebSocket object.
+	--- @return WebSocket webSocket
+	--- @overload fun(params: WebSocket.Params): WebSocket
+	function WebSocket()
+		return {}
+	end
+end
+
 ------------------- ENUMS -------------------
 
 if not ColorMode then
@@ -247,6 +265,18 @@ if not BlendMode then
 		ADDION = 17,
 		SUBTRACT = 18,
 		DIVIDE = 19,
+	}
+end
+
+if not WebSocketMessageType then
+	WebSocketMessageType = {
+		TEXT = "TEXT",
+		BINARY = "BINARY",
+		OPEN = "OPEN",
+		CLOSE = "CLOSE",
+		PING = "PING",
+		PONG = "PONG",
+		FRAGMENT = "FRAGMENT",
 	}
 end
 
@@ -707,6 +737,14 @@ end
 --- @field stroke fun(self: GraphicsContext)
 --- @field fill fun(self: GraphicsContext)
 
+--- @class WebSocket: table
+--- @field url string Address of the server. Read-only, the url is specified when creating the websocket.
+--- @field connect fun(self: WebSocket) Try connecting to the server. After a successful connection, `onreceive` function will be called with message type `WebSocketMessageType.OPEN`. When the server or network breaks the connection, the client tries reconnecting automatically.
+--- @field close fun(self: WebSocket) Disconnects from the server. After a disconnect, `onreceive` function will be called with message type `WebSocketMessageType.CLOSE`.
+--- @field sendText fun(self: WebSocket, ...: string) Sends a text message to the server. If multiple strings are passed, they will be joined together.
+--- @field sendBinary fun(self: WebSocket, ...: string) Sends a binary message to the server. If multiple strings are passed, they will be joined together. Lua makes no distinction between character and byte strings, but the websocket protocol does label them.
+--- @field ping fun(self: WebSocket, str: string) Sends a very short ping message to the server. There's a limit to the length of data that can be sent. It's sometimes used to prevent the connection from timing out and closing. A standard compliant server will reply to every "ping" message with a "pong". Client pongs are sent automatically, and there's no need to control that.
+
 --- @class MouseEvent
 --- @field x number
 --- @field y number
@@ -762,3 +800,12 @@ end
 ---| 1
 ---| 2
 ---| 3
+
+--- @alias WebSocketMessageType
+---| 'TEXT'
+---| 'BINARY'
+---| 'OPEN'
+---| 'CLOSE'
+---| 'PING'
+---| 'PONG'
+---| 'FRAGMENT'

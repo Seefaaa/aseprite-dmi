@@ -9,6 +9,8 @@ use std::io::{BufWriter, Cursor};
 use std::path::Path;
 use thiserror::Error;
 
+use crate::utils::{find_available_dir, optimal_size, ToBase64};
+
 const DMI_VERSION: &str = "4.0";
 
 #[derive(Debug)]
@@ -371,7 +373,11 @@ impl State {
 
         Ok(state)
     }
-    pub fn from_clipboard(state: ClipboardState, width: u32, height: u32) -> Result<Self, StateFromClipboardError> {
+    pub fn from_clipboard(
+        state: ClipboardState,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, StateFromClipboardError> {
         let mut frames = Vec::new();
 
         for frame in state.frames.iter() {
@@ -380,8 +386,7 @@ impl State {
                 .nth(1)
                 .ok_or_else(|| StateFromClipboardError::MissingData)?;
             let image_data = general_purpose::STANDARD.decode(base64)?;
-            let reader =
-                ImageReader::with_format(Cursor::new(image_data), image::ImageFormat::Png);
+            let reader = ImageReader::with_format(Cursor::new(image_data), image::ImageFormat::Png);
             let mut image = reader.decode()?;
 
             if image.width() != width || image.height() != height {
@@ -430,7 +435,7 @@ pub enum StateFromClipboardError {
     MissingData,
     DecodeError(#[from] base64::DecodeError),
     Image(#[from] image::ImageError),
-    ToBase64(#[from] ToBase64Error),
+    ToBase64(#[from] crate::utils::ToBase64Error),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -494,71 +499,4 @@ pub enum DmiError {
     ImageSizeMismatch,
     #[error("Failed to find available directory")]
     FindDirError,
-}
-
-trait ToBase64 {
-    type Error;
-    fn to_base64(&self) -> Result<String, Self::Error>;
-}
-
-impl ToBase64 for DynamicImage {
-    type Error = ToBase64Error;
-
-    fn to_base64(&self) -> Result<String, Self::Error> {
-        let mut image_data = Vec::new();
-
-        {
-            let image_buffer = self.to_rgba8();
-            let mut writer = BufWriter::new(&mut image_data);
-            let mut encoder = Encoder::new(&mut writer, self.width(), self.height());
-
-            encoder.set_compression(Compression::Best);
-            encoder.set_color(png::ColorType::Rgba);
-            encoder.set_depth(png::BitDepth::Eight);
-
-            let mut writer = encoder.write_header()?;
-
-            writer.write_image_data(&image_buffer)?;
-        }
-
-        let base64 = general_purpose::STANDARD.encode(image_data);
-        Ok(format!("data:image/png;base64,{}", base64))
-    }
-}
-
-#[derive(Error, Debug)]
-#[error(transparent)]
-pub enum ToBase64Error {
-    Image(#[from] image::ImageError),
-    PngEncoding(#[from] png::EncodingError),
-}
-
-fn find_available_dir<P: AsRef<OsStr>>(path: P) -> Option<String> {
-    let mut index: u32 = 0;
-    let mut path = Path::new(&path).to_path_buf();
-    let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
-
-    loop {
-        index += 1;
-        path.set_file_name(format!("{}.{}", file_name, index));
-        if !path.exists() {
-            break;
-        }
-    }
-
-    path.to_str().map(|s| s.to_string())
-}
-
-fn optimal_size(frames: usize, width: u32, height: u32) -> (f32, u32, u32) {
-    if frames == 0 {
-        return (0., width, height);
-    }
-
-    let sqrt = (frames as f32).sqrt().ceil();
-    let (width, height) = (
-        (width as f32 * sqrt) as u32,
-        height * (frames as f32 / sqrt).ceil() as u32,
-    );
-
-    (sqrt, width, height)
 }

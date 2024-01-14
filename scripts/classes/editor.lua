@@ -119,16 +119,6 @@ end
 --- Opens a DMI file and displays it in the editor.
 --- @param dmi Dmi|nil The DMI object to be opened if not passed `Editor.open_path` will be used.
 function Editor:open_file(dmi)
-	local success = true
-	local dmi_ = dmi
-
-	if not dmi then
-		local success, _, _, _, dmi = lib:open(self.open_path)
-		if success then
-			dmi_ = dmi
-		end
-	end
-
 	if self.dmi then
 		lib:remove_dir(self.dmi.temp)
 	end
@@ -147,8 +137,14 @@ function Editor:open_file(dmi)
 
 	self:repaint()
 
-	if success then
-		self.dmi = dmi_ --[[@as Dmi]]
+	if not dmi then
+		lib:open_file(self.open_path, function(dmi)
+			self.dmi = dmi --[[@as Dmi]]
+			self.image_cache:load_previews(self.dmi)
+			self:repaint_states()
+		end)
+	else
+		self.dmi = dmi --[[@as Dmi]]
 		self.image_cache:load_previews(self.dmi)
 		self:repaint_states()
 	end
@@ -752,22 +748,30 @@ end
 function Editor:paste_state()
 	if not self.dmi then return end
 
-	local success, _, _, output, state = lib:paste_state(self.dmi)
+	lib:paste_state(self.dmi, function(state, error)
+		if not error then
+			table.insert(self.dmi.states, state)
+			self.image_cache:load_state(self.dmi, state --[[@as State]])
+			self:repaint_states()
+		else
+			app.alert { title = self.title, text = { "Failed to paste state", error } }
+		end
+	end)
+end
 
-	if success then
-		table.insert(self.dmi.states, state)
-		self.image_cache:load_state(self.dmi, state --[[@as State]])
-		self:repaint_states()
-	else
-		-- local lines = string.split(output, "\n")
-		-- local first_line = table.remove(lines, 1)
-		-- local text = { "Failed to paste state" }
-		-- for _, line in ipairs(lines) do
-		-- 	table.insert(text, line)
-		-- end
-		-- table.insert(text, first_line)
-		-- app.alert { title = self.title, text = text }
-	end
+-- Creates a new state for the editor.
+function Editor:new_state()
+	if not self.dmi then return end
+
+	lib:new_state(self.dmi, function(state, error)
+		if not error then
+			table.insert(self.dmi.states, state)
+			self.image_cache:load_state(self.dmi, state --[[@as State]])
+			self:repaint_states()
+		else
+			app.alert { title = self.title, text = { "Failed to create new state", error } }
+		end
+	end)
 end
 
 --- Removes unused statesprites from the editor.
@@ -967,15 +971,6 @@ function Editor:set_state_dirs(state, directions)
 	end
 end
 
-function Editor:new_state()
-	local success, _, _, _, state = lib:new_state(self.dmi)
-	if success then
-		table.insert(self.dmi.states, state)
-		self.image_cache:load_state(self.dmi, state --[[@as State]])
-		self:repaint_states()
-	end
-end
-
 --- Reorders the layers in the state_sprite based on their names.
 --- Layers with names found in DIRECTION_NAMES are placed in reverse order,
 --- while other layers are placed after the direction layers.
@@ -1030,13 +1025,12 @@ function Editor:save()
 	save_dialog:button {
 		text = "Save",
 		onclick = function()
-			local success = lib:save(self.dmi, save_dialog.data["save_dmi_file"])
-
-			if not success then
-				app.alert { title = "Save File", text = "Failed to save" }
-			end
-
 			save_dialog:close()
+			lib:save_file(self.dmi, save_dialog.data["save_dmi_file"], function(success, error)
+				if not success then
+					app.alert { title = "Save File", text = { "Failed to save", error } }
+				end
+			end)
 		end
 	}
 
