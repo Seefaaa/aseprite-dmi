@@ -43,6 +43,7 @@ pub fn websocket(mut arguments: impl Iterator<Item = String>) {
                         "newstate" => Some(new_state(message)),
                         "copystate" => Some(copy_state(message)),
                         "pastestate" => Some(paste_state(message)),
+                        "removedir" => Some(remove_dir(message)),
                         _ => None,
                     };
 
@@ -162,6 +163,21 @@ fn paste_state(message: &str) -> Message {
         }
         Err(e) => {
             let e = format_error!("pastestate", e);
+            Message::Text(e)
+        }
+    }
+}
+
+fn remove_dir(message: &str) -> Message {
+    let args = split_args(message.to_string()).into_iter().skip(1);
+
+    match commands::remove_dir(args) {
+        Ok(_) => {
+            let json = format_event!("removedir");
+            Message::Text(json)
+        }
+        Err(e) => {
+            let e = format_error!("removedir", e);
             Message::Text(e)
         }
     }

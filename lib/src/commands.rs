@@ -150,11 +150,13 @@ pub fn paste_state(mut arguments: impl Iterator<Item = String>) -> Result<String
     Ok(state)
 }
 
-pub fn remove_dir(mut arguments: impl Iterator<Item = String>) {
-    let dir = arguments.next().expect("No directory provided");
+pub fn remove_dir(mut arguments: impl Iterator<Item = String>) -> Result<()> {
+    let dir = arguments.next().ok_or(anyhow!("No directory provided"))?;
     let dir = Path::new(&dir);
 
     if dir.exists() {
-        fs::remove_dir_all(dir).expect("Failed to remove directory");
+        fs::remove_dir_all(dir)?;
     }
+
+    Ok(())
 }

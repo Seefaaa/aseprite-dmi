@@ -263,10 +263,20 @@ end
 
 --- Removes a directory at the specified path.
 --- @param path string The path of the directory to be removed.
---- @return boolean|nil success True if the directory is successfully removed, false otherwise.
---- @return string reason The reason for the failure, if any.
---- @return number code The error code, if any.
---- @return string output The output message, if any.
-function Lib:remove_dir(path)
-	return self:call("RM", '"' .. path .. '"')
+--- @param callback? fun(success: boolean, error?: string) The callback function to be called when the directory is removed.
+function Lib:remove_dir(path, callback)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		self:once("open", function()
+			self:remove_dir(path, callback)
+		end)
+		return
+	end
+
+	self.websocket:sendText('removedir "' .. path .. '"')
+	if callback then
+		self:once("removedir", function(_, _, error)
+			callback(not error, error)
+		end)
+	end
 end

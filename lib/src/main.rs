@@ -60,7 +60,9 @@ fn main() {
             }
         },
         "RM" => {
-            commands::remove_dir(arguments);
+            if let Err(e) = commands::remove_dir(arguments) {
+                eprintln!("{}", e);
+            }
         }
         "NEWWS" => {
             let current_exe = current_exe().expect("Failed to get self path");
