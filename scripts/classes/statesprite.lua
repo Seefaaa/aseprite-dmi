@@ -107,7 +107,7 @@ function StateSprite:save()
 					image:drawImage(cel.image, cel.position)
 				end
 
-				image:saveAs(app.fs.joinPath(self.editor.dmi.temp, self.state.frame_key .. "." .. index .. ".png"))
+				save_image_bytes(image, app.fs.joinPath(self.editor.dmi.temp, self.state.frame_key .. "." .. index .. ".bytes"))
 
 				if frame_index == 1 and layer_index == #self.sprite.layers then
 					self.editor.image_cache:set(self.state.frame_key, image)

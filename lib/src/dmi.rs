@@ -1,12 +1,12 @@
 use base64::{engine::general_purpose, Engine as _};
-use image::{imageops, ImageBuffer};
+use image::{imageops, ImageBuffer, Rgba};
 use image::{io::Reader as ImageReader, DynamicImage};
 use png::{Compression, Decoder, Encoder};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::fs::{self, File};
-use std::io::{BufWriter, Cursor};
+use std::io::{BufWriter, Cursor, Read as _, Write as _};
 use std::path::Path;
 use thiserror::Error;
 
@@ -334,10 +334,10 @@ impl State {
 
         {
             let mut index = 1;
-            let mut path = Path::new(&path).join(".png");
+            let mut path = Path::new(&path).join(".bytes");
             loop {
                 let frame_key = format!("{}.{}", self.name, index);
-                path.set_file_name(format!("{}.{}.png", frame_key, 0));
+                path.set_file_name(format!("{}.{}.bytes", frame_key, 0));
                 if !path.exists() {
                     state.frame_key = frame_key;
                     break;
@@ -350,7 +350,8 @@ impl State {
         for frame in 0..self.frame_count {
             for direction in 0..self.dirs {
                 let image = &self.frames[(frame * self.dirs + direction) as usize];
-                image.save(Path::new(&path).join(format!("{}.{}.png", state.frame_key, index)))?;
+                let path = Path::new(&path).join(format!("{}.{}.bytes", state.frame_key, index));
+                save_image_as_bytes(image, &path)?;
                 index += 1;
             }
         }
@@ -371,8 +372,9 @@ impl State {
         };
 
         for frame in 0..(serialized.frame_count * serialized.dirs) {
-            let path = Path::new(&path).join(format!("{}.{}.png", serialized.frame_key, frame));
-            state.frames.push(ImageReader::open(path)?.decode()?);
+            let path = Path::new(&path).join(format!("{}.{}.bytes", serialized.frame_key, frame));
+            let image = load_image_from_bytes(path)?;
+            state.frames.push(image);
         }
 
         Ok(state)
@@ -495,4 +497,70 @@ pub enum DmiError {
     ImageSizeMismatch,
     #[error("Failed to find available directory")]
     FindDirError,
+}
+
+fn save_image_as_bytes<P: AsRef<Path>>(image: &DynamicImage, path: P) -> DmiResult<()> {
+    let mut bytes = Vec::new();
+
+    let width = image.width().to_string();
+    let height = image.height().to_string();
+    let width_bytes = width.as_bytes();
+    let height_bytes = height.as_bytes();
+
+    bytes.extend_from_slice(width_bytes);
+    bytes.push(0x0A);
+    bytes.extend_from_slice(height_bytes);
+    bytes.push(0x0A);
+
+    for pixel in image.to_rgba8().pixels() {
+        bytes.push(pixel[0]);
+        bytes.push(pixel[1]);
+        bytes.push(pixel[2]);
+        bytes.push(pixel[3]);
+    }
+
+    let mut writer = BufWriter::new(File::create(path)?);
+    writer.write_all(&bytes)?;
+
+    Ok(())
+}
+
+fn load_image_from_bytes<P: AsRef<Path>>(path: P) -> DmiResult<DynamicImage> {
+    let mut bytes = Vec::new();
+
+    let mut file = File::open(path)?;
+    file.read_to_end(&mut bytes)?;
+
+    let mut width = String::new();
+    let mut height = String::new();
+    let mut index = 0;
+
+    while bytes[index] != 0x0A {
+        width.push(bytes[index] as char);
+        index += 1;
+    }
+
+    index += 1;
+
+    while bytes[index] != 0x0A {
+        height.push(bytes[index] as char);
+        index += 1;
+    }
+
+    index += 1;
+
+    let width = width.parse()?;
+    let height = height.parse()?;
+
+    let mut image_buffer: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::new(width, height);
+
+    for pixel in image_buffer.pixels_mut() {
+        pixel[0] = bytes[index];
+        pixel[1] = bytes[index + 1];
+        pixel[2] = bytes[index + 2];
+        pixel[3] = bytes[index + 3];
+        index += 4;
+    }
+
+    Ok(DynamicImage::ImageRgba8(image_buffer))
 }

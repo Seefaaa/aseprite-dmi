@@ -55,3 +55,41 @@ function new_file()
 		end
 	end
 end
+
+--- Function to load image from bytes file.
+--- Thanks to `Astropulse` for sharing [this](https://community.aseprite.org/t/loading-ui-images-for-graphicscontext-elements-at-lightning-speed/21128) article.
+--- @param file string The path to the file.
+--- @return Image image The image loaded from the file.
+function load_image_bytes(file)
+	local file = io.open(file, "rb")
+
+	assert(file, "File not found")
+
+	local width = tonumber(file:read("*line"))
+	local height = tonumber(file:read("*line"))
+	local bytes = file:read("*a")
+
+	file:close()
+
+	assert(width and height and bytes, "Invalid file")
+
+	image = Image(width, height)
+	image.bytes = bytes
+
+	return image
+end
+
+--- Function to save image to bytes file.
+--- @param image Image The image to save.
+--- @param file string The path to the file.
+function save_image_bytes(image, file)
+	local file = io.open(file, "wb")
+
+	assert(file, "File not found")
+
+	file:write(image.width .. "\n")
+	file:write(image.height .. "\n")
+	file:write(image.bytes)
+
+	file:close()
+end

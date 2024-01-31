@@ -702,7 +702,7 @@ function Editor:open_state(state)
 					sprite.layers[layer],
 					sprite.frames[frame],
 					index == 1 and self.image_cache:get(state.frame_key) or
-					Image { fromFile = app.fs.joinPath(self.dmi.temp, state.frame_key .. "." .. math.floor(index - 1) .. ".png") },
+					load_image_bytes(app.fs.joinPath(self.dmi.temp, state.frame_key .. "." .. math.floor(index - 1) .. ".bytes")),
 					Point(0, 0)
 				)
 				index = index + 1
