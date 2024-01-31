@@ -1,4 +1,5 @@
 @echo off
+
 SET EXTENSION_NAME=dmi-editor
 SET TARGET=debug
 SET SKIP=0
@@ -26,39 +27,39 @@ IF NOT %SKIP% NEQ 0 (
 	cd ..
 	IF %ERRORLEVEL% NEQ 0 (
 		echo "lib build failed. Please check for errors."
-		rmdir /S /Q .build
+		rmdir /S /Q .dist
 		exit /b
 	)
 )
 
 IF NOT EXIST lib\target\%TARGET%\lib.exe (
 	echo "lib.exe was not built. Please check for errors."
-	rmdir /S /Q .build
+	rmdir /S /Q .dist
 	exit /b
 )
 
-IF EXIST .build (
-	rmdir /S /Q .build
+IF EXIST .dist (
+	rmdir /S /Q .dist
 )
-mkdir .build
+mkdir .dist
 
-copy package.json .build
-copy LICENSE .build
+copy package.json .dist
+copy LICENSE .dist
 
-copy lib\target\%TARGET%\lib.exe .build
+copy lib\target\%TARGET%\lib.exe .dist
 
-xcopy /E scripts\ .build\scripts\
+xcopy /E scripts\ .dist\scripts\
 
-IF EXIST build (
-	rmdir /S /Q build
+IF EXIST dist (
+	rmdir /S /Q dist
 )
-mkdir build
+mkdir dist
 
-powershell Compress-Archive -Path ".build\*" -DestinationPath "build\%EXTENSION_NAME%.zip" -Force
+powershell Compress-Archive -Path ".dist\*" -DestinationPath "dist\%EXTENSION_NAME%.zip" -Force
 
-rmdir /S /Q .build
+rmdir /S /Q .dist
 
-cd build
+cd dist
 IF EXIST %EXTENSION_NAME%.aseprite-extension (
 	del %EXTENSION_NAME%.aseprite-extension
 )

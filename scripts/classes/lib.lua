@@ -19,7 +19,7 @@ function Lib.new(lib_path, temp_dir)
 	local port = nil
 	local file_name = app.fs.joinPath(temp_dir, "port")
 
-	os.execute(lib_path .. ' ws_init "' .. file_name .. '"')
+	os.execute(lib_path .. ' init "' .. file_name .. '"')
 
 	local handle = io.open(file_name, "r")
 	if handle then
@@ -64,7 +64,9 @@ function Lib:on_receive(message, data)
 		if data and data:starts_with("{") and data:ends_with("}") then
 			local data = json.decode(data) --[[@as {event: string, data?: any, error?: string}]]
 			if data.error then
-				print("Error: " .. data.error)
+				if data.event ~= "pastestate" then
+					print("Error: " .. data.error)
+				end
 			end
 			self:handle_event(data.event, data.data, data.error)
 		end
@@ -119,8 +121,13 @@ function Lib:once(event, callback)
 end
 
 --- Waits for a specified event to occur.
+--- DO NOT EVER USE
 --- @param event string The event to wait for.
 function Lib:wait_for(event)
+	if not self.websocket_connected then
+		return
+	end
+
 	local startTime = os.clock()
 	local break_ = false
 	self:once(event, function()

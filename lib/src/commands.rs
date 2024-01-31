@@ -1,17 +1,17 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Context as _, Result};
 use arboard::Clipboard;
-use serde_json;
-use std::fs;
-use std::fs::create_dir_all;
+use std::fs::{create_dir_all, remove_dir_all};
 use std::path::Path;
 
 use crate::dmi::{ClipboardState, Dmi, SerializedDmi, SerializedState, State};
 
-pub fn new_file(mut arguments: impl Iterator<Item = String>) -> Result<String> {
-    let out_dir = arguments.next().ok_or(anyhow!("No output provided"))?;
-    let name = arguments.next().ok_or(anyhow!("No name provided"))?;
-    let width: u32 = arguments.next().expect("No width provided").parse()?;
-    let height: u32 = arguments.next().expect("No height provided").parse()?;
+type CommandResult = Result<Option<String>>;
+
+pub fn new_file(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let out_dir = arguments.next().context("No output provided")?;
+    let name = arguments.next().context("No name provided")?;
+    let width: u32 = arguments.next().context("No width provided")?.parse()?;
+    let height: u32 = arguments.next().context("No height provided")?.parse()?;
 
     let out_dir = Path::new(&out_dir);
 
@@ -22,18 +22,18 @@ pub fn new_file(mut arguments: impl Iterator<Item = String>) -> Result<String> {
     let dmi = Dmi::new(name, width, height).serialize(out_dir)?;
     let dmi = serde_json::to_string(&dmi)?;
 
-    Ok(dmi)
+    Ok(Some(dmi))
 }
 
-pub fn open_file(mut arguments: impl Iterator<Item = String>) -> Result<String> {
-    let file = arguments.next().ok_or(anyhow!("No input provided"))?;
-    let out_dir = arguments.next().ok_or(anyhow!("No output provided"))?;
+pub fn open_file(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let file = arguments.next().context("No input provided")?;
+    let out_dir = arguments.next().context("No output provided")?;
 
     let file = Path::new(&file);
     let output = Path::new(&out_dir);
 
     if file.is_file() {
-        if output.extension().is_some() {
+        if output.is_file() {
             bail!("Output path must be a directory");
         }
 
@@ -44,26 +44,29 @@ pub fn open_file(mut arguments: impl Iterator<Item = String>) -> Result<String> 
         let dmi = Dmi::open(file)?.serialize(output)?;
         let dmi = serde_json::to_string(&dmi)?;
 
-        Ok(dmi)
-    } else {
-        bail!("Input path must be a file");
+        return Ok(Some(dmi));
     }
+
+    bail!("Input path must be a file");
 }
 
-pub fn save_file(mut arguments: impl Iterator<Item = String>) -> Result<()> {
-    let path = arguments.next().ok_or(anyhow!("No path provided"))?;
-    let dmi = arguments.next().ok_or(anyhow!("No json provided"))?;
+pub fn save_file(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let path = arguments.next().context("No path provided")?;
+    let dmi = arguments.next().context("No json provided")?;
 
     let path = Path::new(&path);
 
-    let parent = path.parent();
-    if parent.is_some_and(|p| !p.exists()) {
-        create_dir_all(parent.unwrap())?;
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            create_dir_all(parent)?;
+        }
     }
 
     let dmi = serde_json::from_str::<SerializedDmi>(dmi.as_str())?;
 
-    if !Path::new(&dmi.temp).exists() {
+    let temp = Path::new(&dmi.temp);
+
+    if !temp.exists() {
         bail!("Temp directory does not exist");
     }
 
@@ -71,21 +74,13 @@ pub fn save_file(mut arguments: impl Iterator<Item = String>) -> Result<()> {
 
     dmi.save(path)?;
 
-    Ok(())
+    Ok(None)
 }
 
-pub fn new_state(mut arguments: impl Iterator<Item = String>) -> Result<String> {
-    let temp = arguments
-        .next()
-        .ok_or(anyhow!("No temp directory provided"))?;
-    let width: u32 = arguments
-        .next()
-        .ok_or(anyhow!("No width provided"))?
-        .parse()?;
-    let height: u32 = arguments
-        .next()
-        .ok_or(anyhow!("No height provided"))?
-        .parse()?;
+pub fn new_state(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let temp = arguments.next().context("No temp directory provided")?;
+    let width: u32 = arguments.next().context("No width provided")?.parse()?;
+    let height: u32 = arguments.next().context("No height provided")?.parse()?;
 
     let temp = Path::new(&temp);
 
@@ -96,14 +91,12 @@ pub fn new_state(mut arguments: impl Iterator<Item = String>) -> Result<String> 
     let state = State::new_blank(String::default(), width, height).serialize(temp)?;
     let state = serde_json::to_string(&state)?;
 
-    Ok(state)
+    Ok(Some(state))
 }
 
-pub fn copy_state(mut arguments: impl Iterator<Item = String>) -> Result<()> {
-    let temp = arguments
-        .next()
-        .ok_or(anyhow!("No temp directory provided"))?;
-    let state = arguments.next().ok_or(anyhow!("No json provided"))?;
+pub fn copy_state(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let temp = arguments.next().context("No temp directory provided")?;
+    let state = arguments.next().context("No json provided")?;
 
     let temp = Path::new(&temp);
 
@@ -118,21 +111,13 @@ pub fn copy_state(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     let mut clipboard = Clipboard::new()?;
     clipboard.set_text(state)?;
 
-    Ok(())
+    Ok(None)
 }
 
-pub fn paste_state(mut arguments: impl Iterator<Item = String>) -> Result<String> {
-    let temp = arguments
-        .next()
-        .ok_or(anyhow!("No temp directory provided"))?;
-    let width: u32 = arguments
-        .next()
-        .ok_or(anyhow!("No width provided"))?
-        .parse()?;
-    let height: u32 = arguments
-        .next()
-        .ok_or(anyhow!("No height provided"))?
-        .parse()?;
+pub fn paste_state(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let temp = arguments.next().context("No temp directory provided")?;
+    let width: u32 = arguments.next().context("No width provided")?.parse()?;
+    let height: u32 = arguments.next().context("No height provided")?.parse()?;
 
     let temp = Path::new(&temp);
 
@@ -147,16 +132,26 @@ pub fn paste_state(mut arguments: impl Iterator<Item = String>) -> Result<String
     let state = State::from_clipboard(state, width, height)?.serialize(temp)?;
     let state = serde_json::to_string(&state)?;
 
-    Ok(state)
+    Ok(Some(state))
 }
 
-pub fn remove_dir(mut arguments: impl Iterator<Item = String>) -> Result<()> {
-    let dir = arguments.next().ok_or(anyhow!("No directory provided"))?;
+pub fn remove_dir(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let dir = arguments.next().context("No directory provided")?;
+
     let dir = Path::new(&dir);
 
     if dir.exists() {
-        fs::remove_dir_all(dir)?;
+        remove_dir_all(dir)?;
     }
 
-    Ok(())
+    Ok(None)
+}
+
+// WIP
+pub fn browser() -> CommandResult {
+    let url = format!("{}/releases", env!("CARGO_PKG_REPOSITORY"));
+
+    webbrowser::open(&url)?;
+
+    Ok(None)
 }

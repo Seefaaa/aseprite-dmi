@@ -1,39 +1,10 @@
-use std::{ffi::OsStr, io::BufWriter, path::Path};
+use std::{ffi::OsStr, io::BufWriter, path::Path, time::Duration};
 
+use anyhow::Context as _;
 use base64::{engine::general_purpose, Engine as _};
 use image::DynamicImage;
 use png::{Compression, Encoder};
 use thiserror::Error;
-
-pub trait ToBase64 {
-    type Error;
-    fn to_base64(&self) -> Result<String, Self::Error>;
-}
-
-impl ToBase64 for DynamicImage {
-    type Error = ToBase64Error;
-
-    fn to_base64(&self) -> Result<String, Self::Error> {
-        let mut image_data = Vec::new();
-
-        {
-            let image_buffer = self.to_rgba8();
-            let mut writer = BufWriter::new(&mut image_data);
-            let mut encoder = Encoder::new(&mut writer, self.width(), self.height());
-
-            encoder.set_compression(Compression::Best);
-            encoder.set_color(png::ColorType::Rgba);
-            encoder.set_depth(png::BitDepth::Eight);
-
-            let mut writer = encoder.write_header()?;
-
-            writer.write_image_data(&image_buffer)?;
-        }
-
-        let base64 = general_purpose::STANDARD.encode(image_data);
-        Ok(format!("data:image/png;base64,{}", base64))
-    }
-}
 
 #[derive(Error, Debug)]
 #[error(transparent)]
@@ -42,11 +13,34 @@ pub enum ToBase64Error {
     PngEncoding(#[from] png::EncodingError),
 }
 
-pub fn find_available_dir<P: AsRef<OsStr>>(path: P) -> Option<String> {
-    let mut index: u32 = 0;
+pub fn image_to_base64(image: &DynamicImage) -> Result<String, ToBase64Error> {
+    let mut image_data = Vec::new();
+
+    {
+        let image_buffer = image.to_rgba8();
+        let mut writer = BufWriter::new(&mut image_data);
+        let mut encoder = Encoder::new(&mut writer, image.width(), image.height());
+
+        encoder.set_compression(Compression::Best);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+
+        let mut writer = encoder.write_header()?;
+
+        writer.write_image_data(&image_buffer)?;
+    }
+
+    Ok(format!(
+        "data:image/png;base64,{}",
+        general_purpose::STANDARD.encode(image_data)
+    ))
+}
+
+pub fn find_dir<P: AsRef<OsStr>>(path: P) -> Option<String> {
     let mut path = Path::new(&path).to_path_buf();
     let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
 
+    let mut index: u32 = 0;
     loop {
         index += 1;
         path.set_file_name(format!("{}.{}", file_name, index));
@@ -118,5 +112,30 @@ pub fn split_args(string: String) -> Vec<String> {
         parts_quotes.push(current_part);
     }
 
-    return parts_quotes;
+    parts_quotes
+}
+
+// WIP
+pub fn _check_latest_release() -> anyhow::Result<bool> {
+    let current_version = env!("CARGO_PKG_VERSION");
+
+    let repository = env!("CARGO_PKG_REPOSITORY");
+    let repository = repository.split('/').collect::<Vec<_>>();
+    let repository = format!("{}/{}", repository[3], repository[4]);
+
+    let user_agent = format!("{}/{}", env!("CARGO_PKG_NAME"), current_version);
+
+    let client = reqwest::blocking::Client::builder()
+        .user_agent(user_agent)
+        .timeout(Duration::from_secs(10))
+        .build()?;
+
+    let url = format!("https://api.github.com/repos/{repository}/releases/latest");
+
+    let response = client.get(url).send()?.json::<serde_json::Value>()?;
+
+    let latest_version = response["tag_name"].as_str().context("No tag_name found")?;
+    let latest_version = &latest_version[1..];
+
+    Ok(current_version == latest_version)
 }

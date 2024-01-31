@@ -3,13 +3,14 @@ use image::{imageops, ImageBuffer};
 use image::{io::Reader as ImageReader, DynamicImage};
 use png::{Compression, Decoder, Encoder};
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::{BufWriter, Cursor};
 use std::path::Path;
 use thiserror::Error;
 
-use crate::utils::{find_available_dir, optimal_size, ToBase64};
+use crate::utils::{find_dir, image_to_base64, optimal_size};
 
 const DMI_VERSION: &str = "4.0";
 
@@ -30,15 +31,7 @@ impl Dmi {
             states: Vec::new(),
         }
     }
-    pub fn open<P: AsRef<Path>>(path: P) -> DmiResult<Self> {
-        let decoder = Decoder::new(File::open(&path)?);
-        let reader = decoder.read_info()?;
-        let chunk = reader
-            .info()
-            .compressed_latin1_text
-            .first()
-            .ok_or(DmiError::MissingZTXTChunk)?;
-        let metadata = chunk.get_text()?;
+    pub fn with_metadata(&mut self, metadata: String) -> DmiResult<()> {
         let mut lines = metadata.lines();
 
         if lines.next().ok_or(DmiError::MissingMetadataHeader)? != "# BEGIN DMI" {
@@ -50,12 +43,6 @@ impl Dmi {
         {
             return Err(DmiError::InvalidMetadataVersion);
         }
-
-        let mut dmi = Self::new(
-            path.as_ref().file_stem().unwrap().to_str().unwrap().into(),
-            32,
-            32,
-        );
 
         for line in lines {
             if line == "# END DMI" {
@@ -69,23 +56,23 @@ impl Dmi {
             );
 
             match key {
-                "width" => dmi.width = value.parse()?,
-                "height" => dmi.height = value.parse()?,
-                "state" => dmi.states.push(State::new(value.trim_matches('"').into())),
+                "width" => self.width = value.parse()?,
+                "height" => self.height = value.parse()?,
+                "state" => self.states.push(State::new(value.trim_matches('"').into())),
                 "dirs" => {
-                    dmi.states
+                    self.states
                         .last_mut()
                         .ok_or(DmiError::OutOfOrderStateInfo)?
                         .dirs = value.parse()?;
                 }
                 "frames" => {
-                    dmi.states
+                    self.states
                         .last_mut()
                         .ok_or(DmiError::OutOfOrderStateInfo)?
                         .frame_count = value.parse()?;
                 }
                 "delay" => {
-                    dmi.states
+                    self.states
                         .last_mut()
                         .ok_or(DmiError::OutOfOrderStateInfo)?
                         .delays = value
@@ -94,25 +81,25 @@ impl Dmi {
                         .collect::<Result<_, _>>()?;
                 }
                 "loop" => {
-                    dmi.states
+                    self.states
                         .last_mut()
                         .ok_or(DmiError::OutOfOrderStateInfo)?
                         .loop_ = value.parse()?;
                 }
                 "rewind" => {
-                    dmi.states
+                    self.states
                         .last_mut()
                         .ok_or(DmiError::OutOfOrderStateInfo)?
                         .rewind = value == "1";
                 }
                 "movement" => {
-                    dmi.states
+                    self.states
                         .last_mut()
                         .ok_or(DmiError::OutOfOrderStateInfo)?
                         .movement = value == "1";
                 }
                 "hotspot" => {
-                    dmi.states
+                    self.states
                         .last_mut()
                         .ok_or(DmiError::OutOfOrderStateInfo)?
                         .hotspots
@@ -122,6 +109,63 @@ impl Dmi {
             }
         }
 
+        Ok(())
+    }
+    pub fn metadata(&self) -> String {
+        let mut string = String::default();
+        string.push_str("# BEGIN DMI\n");
+        string.push_str(format!("version = {}\n", DMI_VERSION).as_str());
+        string.push_str(format!("\twidth = {}\n", self.width).as_str());
+        string.push_str(format!("\theight = {}\n", self.height).as_str());
+        for state in self.states.iter() {
+            string.push_str(format!("state = \"{}\"\n", state.name).as_str());
+            string.push_str(format!("\tdirs = {}\n", state.dirs).as_str());
+            string.push_str(format!("\tframes = {}\n", state.frame_count).as_str());
+            if !state.delays.is_empty() {
+                let delays = state
+                    .delays
+                    .iter()
+                    .map(|delay| delay.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                string.push_str(format!("\tdelay = {}\n", delays).as_str())
+            };
+            if state.loop_ > 0 {
+                string.push_str(format!("\tloop = {}\n", state.loop_).as_str())
+            };
+            if state.rewind {
+                string.push_str(format!("\trewind = {}\n", state.rewind as u32).as_str())
+            };
+            if state.movement {
+                string.push_str(format!("\tmovement = {}\n", state.movement as u32).as_str())
+            };
+            if !state.hotspots.is_empty() {
+                for hotspot in state.hotspots.iter() {
+                    string.push_str(format!("\thotspot = {}\n", hotspot).as_str());
+                }
+            }
+        }
+        string.push_str("# END DMI\n");
+        string
+    }
+    pub fn open<P: AsRef<Path>>(path: P) -> DmiResult<Self> {
+        let decoder = Decoder::new(File::open(&path)?);
+        let reader = decoder.read_info()?;
+        let chunk = reader
+            .info()
+            .compressed_latin1_text
+            .first()
+            .ok_or(DmiError::MissingZTXTChunk)?;
+        let metadata = chunk.get_text()?;
+
+        let mut dmi = Self::new(
+            path.as_ref().file_stem().unwrap().to_str().unwrap().into(),
+            32,
+            32,
+        );
+
+        dmi.with_metadata(metadata)?;
+
         let mut reader = ImageReader::open(&path)?;
         reader.set_format(image::ImageFormat::Png);
 
@@ -130,19 +174,22 @@ impl Dmi {
 
         let mut index = 0;
         for state in dmi.states.iter_mut() {
-            let frame_count_usize = state.frame_count as usize;
-
+            let frame_count = state.frame_count as usize;
             if !state.delays.is_empty() {
-                if state.delays.len() > frame_count_usize {
-                    state.delays.truncate(frame_count_usize);
-                } else if state.delays.len() < frame_count_usize {
-                    let last_delay = *state.delays.last().unwrap();
-                    let additional_delays =
-                        vec![last_delay; frame_count_usize - state.delays.len()];
-                    state.delays.extend(additional_delays);
+                let delay_count = state.delays.len();
+                match delay_count.cmp(&frame_count) {
+                    Ordering::Less => {
+                        let last_delay = *state.delays.last().unwrap();
+                        let additional_delays = vec![last_delay; frame_count - delay_count];
+                        state.delays.extend(additional_delays);
+                    }
+                    Ordering::Greater => {
+                        state.delays.truncate(frame_count);
+                    }
+                    _ => {}
                 }
             } else if state.frame_count > 1 {
-                state.delays = vec![1.; frame_count_usize];
+                state.delays = vec![1.; frame_count];
             }
 
             for _ in 0..state.frame_count {
@@ -202,51 +249,8 @@ impl Dmi {
 
         Ok(())
     }
-    pub fn metadata(&self) -> String {
-        let mut string = String::default();
-        string.push_str("# BEGIN DMI\n");
-        string.push_str(format!("version = {}\n", DMI_VERSION).as_str());
-        string.push_str(format!("\twidth = {}\n", self.width).as_str());
-        string.push_str(format!("\theight = {}\n", self.height).as_str());
-        for state in self.states.iter() {
-            string.push_str(format!("state = \"{}\"\n", state.name).as_str());
-            string.push_str(format!("\tdirs = {}\n", state.dirs).as_str());
-            string.push_str(format!("\tframes = {}\n", state.frame_count).as_str());
-            if state.delays.len() > 0 {
-                string.push_str(
-                    format!(
-                        "\tdelay = {}\n",
-                        state
-                            .delays
-                            .iter()
-                            .map(|delay| delay.to_string())
-                            .collect::<Vec<_>>()
-                            .join(",")
-                    )
-                    .as_str(),
-                )
-            };
-            if state.loop_ > 0 {
-                string.push_str(format!("\tloop = {}\n", state.loop_).as_str())
-            };
-            if state.rewind {
-                string.push_str(format!("\trewind = {}\n", state.rewind as u32).as_str())
-            };
-            if state.movement {
-                string.push_str(format!("\tmovement = {}\n", state.movement as u32).as_str())
-            };
-            if state.hotspots.len() > 0 {
-                for hotspot in state.hotspots.iter() {
-                    string.push_str(format!("\thotspot = {}\n", hotspot).as_str());
-                }
-            }
-        }
-        string.push_str("# END DMI\n");
-        string
-    }
     pub fn serialize<P: AsRef<Path>>(&self, path: P) -> DmiResult<SerializedDmi> {
-        let path = find_available_dir(path.as_ref().join(self.name.clone()))
-            .ok_or(DmiError::FindDirError)?;
+        let path = find_dir(path.as_ref().join(self.name.clone())).ok_or(DmiError::FindDirError)?;
         let path = Path::new(&path);
 
         fs::create_dir_all(path)?;
@@ -373,18 +377,14 @@ impl State {
 
         Ok(state)
     }
-    pub fn from_clipboard(
-        state: ClipboardState,
-        width: u32,
-        height: u32,
-    ) -> Result<Self, StateFromClipboardError> {
+    pub fn from_clipboard(state: ClipboardState, width: u32, height: u32) -> DmiResult<Self> {
         let mut frames = Vec::new();
 
         for frame in state.frames.iter() {
             let base64 = frame
                 .split(',')
                 .nth(1)
-                .ok_or_else(|| StateFromClipboardError::MissingData)?;
+                .ok_or_else(|| DmiError::MissingData)?;
             let image_data = general_purpose::STANDARD.decode(base64)?;
             let reader = ImageReader::with_format(Cursor::new(image_data), image::ImageFormat::Png);
             let mut image = reader.decode()?;
@@ -396,11 +396,13 @@ impl State {
             frames.push(image);
         }
 
+        let frame_count = state.frames.len() as u32 / state.dirs;
+
         Ok(Self {
             name: state.name,
             dirs: state.dirs,
             frames,
-            frame_count: state.frames.len() as u32 / state.dirs,
+            frame_count,
             delays: state.delays,
             loop_: state.loop_,
             rewind: state.rewind,
@@ -408,11 +410,11 @@ impl State {
             hotspots: state.hotspots,
         })
     }
-    pub fn into_clipboard(self) -> Result<ClipboardState, StateFromClipboardError> {
+    pub fn into_clipboard(self) -> DmiResult<ClipboardState> {
         let frames = self
             .frames
             .iter()
-            .map(|frame| frame.to_base64())
+            .map(image_to_base64)
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(ClipboardState {
@@ -426,28 +428,6 @@ impl State {
             hotspots: self.hotspots,
         })
     }
-}
-
-#[derive(Error, Debug)]
-#[error(transparent)]
-pub enum StateFromClipboardError {
-    #[error("Missing data")]
-    MissingData,
-    DecodeError(#[from] base64::DecodeError),
-    Image(#[from] image::ImageError),
-    ToBase64(#[from] crate::utils::ToBase64Error),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ClipboardState {
-    pub name: String,
-    pub dirs: u32,
-    pub frames: Vec<String>,
-    pub delays: Vec<f32>,
-    pub loop_: u32,
-    pub rewind: bool,
-    pub movement: bool,
-    pub hotspots: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -472,6 +452,18 @@ pub struct SerializedState {
     pub hotspots: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ClipboardState {
+    pub name: String,
+    pub dirs: u32,
+    pub frames: Vec<String>,
+    pub delays: Vec<f32>,
+    pub loop_: u32,
+    pub rewind: bool,
+    pub movement: bool,
+    pub hotspots: Vec<String>,
+}
+
 type DmiResult<T> = Result<T, DmiError>;
 
 #[derive(Error, Debug)]
@@ -483,6 +475,10 @@ pub enum DmiError {
     PngEncoding(#[from] png::EncodingError),
     ParseInt(#[from] std::num::ParseIntError),
     ParseFloat(#[from] std::num::ParseFloatError),
+    DecodeError(#[from] base64::DecodeError),
+    ToBase64(#[from] crate::utils::ToBase64Error),
+    #[error("Missing data")]
+    MissingData,
     #[error("Missing ZTXT chunk")]
     MissingZTXTChunk,
     #[error("Missing metadata header")]

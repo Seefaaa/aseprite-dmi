@@ -753,8 +753,6 @@ function Editor:paste_state()
 			table.insert(self.dmi.states, state)
 			self.image_cache:load_state(self.dmi, state --[[@as State]])
 			self:repaint_states()
-		else
-			app.alert { title = self.title, text = { "Failed to paste state", error } }
 		end
 	end)
 end
