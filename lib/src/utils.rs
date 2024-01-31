@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, io::BufWriter, path::Path, time::Duration};
+use std::{cmp::Ordering, ffi::OsStr, io::BufWriter, path::Path, time::Duration};
 
 use anyhow::Context as _;
 use base64::{engine::general_purpose, Engine as _};
@@ -115,8 +115,7 @@ pub fn split_args(string: String) -> Vec<String> {
     parts_quotes
 }
 
-// WIP
-pub fn _check_latest_release() -> anyhow::Result<bool> {
+pub fn check_latest_release() -> anyhow::Result<bool> {
     let current_version = env!("CARGO_PKG_VERSION");
 
     let repository = env!("CARGO_PKG_REPOSITORY");
@@ -137,5 +136,18 @@ pub fn _check_latest_release() -> anyhow::Result<bool> {
     let latest_version = response["tag_name"].as_str().context("No tag_name found")?;
     let latest_version = &latest_version[1..];
 
-    Ok(current_version == latest_version)
+    Ok(compare_versions(current_version, latest_version) != Ordering::Less)
+}
+
+fn compare_versions(version1: &str, version2: &str) -> Ordering {
+    let v1: Vec<u32> = version1
+        .split('.')
+        .map(|s| s.parse().unwrap_or(0))
+        .collect();
+    let v2: Vec<u32> = version2
+        .split('.')
+        .map(|s| s.parse().unwrap_or(0))
+        .collect();
+
+    v1.cmp(&v2)
 }

@@ -4,6 +4,7 @@ use std::fs::{create_dir_all, remove_dir_all};
 use std::path::Path;
 
 use crate::dmi::{ClipboardState, Dmi, SerializedDmi, SerializedState, State};
+use crate::utils::check_latest_release;
 
 type CommandResult = Result<Option<String>>;
 
@@ -147,9 +148,20 @@ pub fn remove_dir(mut arguments: impl Iterator<Item = String>) -> CommandResult 
     Ok(None)
 }
 
-// WIP
-pub fn browser() -> CommandResult {
-    let url = format!("{}/releases", env!("CARGO_PKG_REPOSITORY"));
+pub fn check_update() -> CommandResult {
+    let is_up_to_date = check_latest_release().unwrap_or(true);
+
+    Ok(Some(is_up_to_date.to_string()))
+}
+
+pub fn open_repo(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let path = arguments.next();
+
+    let url = if let Some(path) = path {
+        format!("{}/{}", env!("CARGO_PKG_REPOSITORY"), path)
+    } else {
+        env!("CARGO_PKG_REPOSITORY").to_string()
+    };
 
     webbrowser::open(&url)?;
 

@@ -274,3 +274,34 @@ function Lib:remove_dir(path, callback)
 		end)
 	end
 end
+
+--- Checks for updates.
+--- @param callback fun(up_to_date: boolean, error?: string) The callback function to be called when the update check is complete.
+function Lib:check_update(callback)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		self:once("open", function()
+			self:check_update(callback)
+		end)
+		return
+	end
+
+	self.websocket:sendText('checkupdate')
+	self:once("checkupdate", function(data, error)
+		callback(not error and data == true, error)
+	end)
+end
+
+--- Opens the repository on browser.
+--- @param path? string The path to use in url if not specified it will open the main page.
+function Lib:open_repo(path)
+	if not self.websocket_connected then
+		self.websocket:connect()
+		self:once("open", function()
+			self:open_repo(path)
+		end)
+		return
+	end
+
+	self.websocket:sendText('openrepo' .. (path and (' "' .. path .. '"') or ""))
+end

@@ -85,8 +85,9 @@ fn process_command(message: &str) -> Option<Message> {
         "copystate" => commands::copy_state(args),
         "pastestate" => commands::paste_state(args),
         "removedir" => commands::remove_dir(args),
-        "browser" => commands::browser(),
-        _ => Err(anyhow!("Unknown command")),
+        "checkupdate" => commands::check_update(),
+        "openrepo" => commands::open_repo(args),
+        _ => Err(anyhow!("Unknown command: {command_name}")),
     };
 
     Some(match result {

@@ -18,9 +18,10 @@ function init(plugin)
 				app.command.CloseFile { ui = false }
 
 				if not lib then
-					lib = Lib.new(app.fs.joinPath(plugin.path, LIB_BIN), app.fs.joinPath(app.fs.tempPath, TEMP_NAME))
-					lib:once("open", function()
-						Editor.new(DIALOG_NAME, filename)
+					init_lib(plugin.path, function()
+						Editor.new(DIALOG_NAME, filename, nil, function()
+							lib:check_update(update_popup)
+						end)
 					end)
 				else
 					Editor.new(DIALOG_NAME, filename)
@@ -46,6 +47,31 @@ function init(plugin)
 		onclick = new_file,
 	}
 
+	plugin:newMenuSeparator {
+		group = "dmi_editor",
+	}
+
+	plugin:newCommand {
+		id = "dmi_report_issue",
+		title = "Report Issue",
+		group = "dmi_editor",
+		onclick = function()
+			init_lib(plugin.path, function()
+				lib:open_repo("issues")
+			end)
+		end,
+	}
+
+	plugin:newCommand {
+		id = "dmi_releases",
+		title = "Releases",
+		group = "dmi_editor",
+		onclick = function()
+			init_lib(plugin.path, function()
+				lib:open_repo("releases")
+			end)
+		end,
+	}
 end
 
 --- Exits the plugin. Called when the plugin is removed or Aseprite is closed.
@@ -55,5 +81,39 @@ function exit(plugin)
 		lib:remove_dir(lib.temp_dir, function()
 			lib.websocket:close()
 		end)
+	end
+end
+
+--- Initializes the lib for first time and calls the callback when it's done.
+--- If the lib is already initialized, it will call the callback immediately.
+--- @param path string lib path
+--- @param callback fun() callback
+function init_lib(path, callback)
+	if not lib then
+		lib = Lib.new(app.fs.joinPath(path, LIB_BIN), app.fs.joinPath(app.fs.tempPath, TEMP_NAME))
+		lib:once("open", function()
+			callback()
+		end)
+	else
+		callback()
+	end
+end
+
+--- Shows the update alert popup.
+--- @param up_to_date boolean
+function update_popup(up_to_date)
+	if not up_to_date then
+		local button = app.alert {
+			title = "Update Available",
+			text = {
+				"An update is available for the DMI Editor plugin.",
+				"Would you like to download it now?",
+				"Pressing \"OK\" will open the releases page in your browser."
+			},
+			buttons = { "OK", "Later" },
+		}
+		if button == 1 then
+			lib:open_repo("releases")
+		end
 	end
 end

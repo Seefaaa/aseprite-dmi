@@ -30,10 +30,11 @@ Editor.__index = Editor
 
 --- Creates a new instance of the Editor class.
 --- @param title string The title of the editor.
---- @param filename string|nil The path of the file to be processed.
---- @param dmi Dmi|nil The DMI object to be opened if not passed `filename` or `Editor.open_path` will be used.
+--- @param filename? string The path of the file to be processed.
+--- @param dmi? Dmi The DMI object to be opened if not passed `filename` or `Editor.open_path` will be used.
+--- @param complete? fun() The callback function to be called when the editor is created.
 --- @return Editor editor  The newly created Editor instance.
-function Editor.new(title, filename, dmi)
+function Editor.new(title, filename, dmi, complete)
 	local self            = setmetatable({}, Editor)
 
 	self.title            = title
@@ -81,10 +82,12 @@ function Editor.new(title, filename, dmi)
 
 	if filename then
 		self:show()
-		self:open_file()
+		self:open_file(nil, complete)
 	elseif dmi then
 		self:show()
-		self:open_file(dmi)
+		self:open_file(dmi, complete)
+	else
+		error("No filename or dmi passed")
 	end
 
 	return self
@@ -117,8 +120,9 @@ function Editor:onclose()
 end
 
 --- Opens a DMI file and displays it in the editor.
---- @param dmi Dmi|nil The DMI object to be opened if not passed `Editor.open_path` will be used.
-function Editor:open_file(dmi)
+--- @param dmi? Dmi The DMI object to be opened if not passed `Editor.open_path` will be used.
+--- @param complete? fun() The callback function to be called when the file is opened.
+function Editor:open_file(dmi, complete)
 	if self.dmi then
 		lib:remove_dir(self.dmi.temp)
 	end
@@ -142,11 +146,17 @@ function Editor:open_file(dmi)
 			self.dmi = dmi --[[@as Dmi]]
 			self.image_cache:load_previews(self.dmi)
 			self:repaint_states()
+			if complete then
+				complete()
+			end
 		end)
 	else
 		self.dmi = dmi --[[@as Dmi]]
 		self.image_cache:load_previews(self.dmi)
 		self:repaint_states()
+		if complete then
+			complete()
+		end
 	end
 end
 
