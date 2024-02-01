@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          target: x86_64-pc-windows-msvc
+          target: i686-pc-windows-msvc
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
@@ -17,7 +17,7 @@ jobs:
       - name: Run clippy
         working-directory: lib
         run: |
-          cargo clippy --target x86_64-pc-windows-msvc --all-features --locked -- -D warnings
+          cargo clippy --target i686-pc-windows-msvc --all-features --locked -- -D warnings
       - name: Run rustfmt
         working-directory: lib
         run: |
@@ -25,10 +25,10 @@ jobs:
       - name: Run build
         working-directory: lib
         run: |
-          cargo build --target x86_64-pc-windows-msvc --locked --release
+          cargo build --target i686-pc-windows-msvc --locked --release
       - name: Copy Lua with other files and zip
         run: |
-          cmd /c build.cmd --ci x86_64-pc-windows-msvc
+          cmd /c build.cmd --ci i686-pc-windows-msvc
       - uses: actions/upload-artifact@v4
         with:
           name: Windows
