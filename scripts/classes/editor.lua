@@ -20,6 +20,7 @@
 --- @field save_path string|nil The path of the file to be saved.
 --- @field open_path string|nil The path of the file to be opened.
 --- @field image_cache ImageCache The image cache object.
+--- @field loading boolean Whether the editor is currently loading a file.
 Editor = {}
 Editor.__index = Editor
 
@@ -54,6 +55,8 @@ function Editor.new(title, filename, dmi, complete)
 	self.max_in_a_row     = 1
 	self.max_in_a_column  = 1
 
+	self.loading					= false
+
 	self.image_cache      = ImageCache.new()
 
 	self.beforecommand    = app.events:on("beforecommand", function(ev) self:onbeforecommand(ev) end)
@@ -81,9 +84,13 @@ function Editor.new(title, filename, dmi, complete)
 	}
 
 	if filename then
+		self.loading = true
+		self.dialog:repaint()
 		self:show()
 		self:open_file(nil, complete)
 	elseif dmi then
+		self.loading = true
+		self.dialog:repaint()
 		self:show()
 		self:open_file(dmi, complete)
 	else
@@ -144,6 +151,7 @@ function Editor:open_file(dmi, complete)
 	if not dmi then
 		lib:open_file(self.open_path, function(dmi)
 			self.dmi = dmi --[[@as Dmi]]
+			self.loading = false
 			self.image_cache:load_previews(self.dmi)
 			self:repaint_states()
 			if complete then
@@ -152,6 +160,7 @@ function Editor:open_file(dmi, complete)
 		end)
 	else
 		self.dmi = dmi --[[@as Dmi]]
+		self.loading = false
 		self.image_cache:load_previews(self.dmi)
 		self:repaint_states()
 		if complete then
@@ -168,6 +177,13 @@ local BOX_PADDING = 5
 --- This function is called when the editor needs to repaint its contents.
 --- @param ctx GraphicsContext The drawing context used to draw on the editor canvas.
 function Editor:onpaint(ctx)
+	if self.loading then
+		local size = ctx:measureText("Loading file...")
+		ctx.color = app.theme.color["button_normal_text"]
+		ctx:fillText("Loading file...", ctx.width / 2 - size.width / 2, ctx.height / 2 - size.height / 2)
+		return
+	end
+
 	local min_width = self.dmi and (self.dmi.width + BOX_PADDING) or 1
 	local min_height = self.dmi and (self.dmi.height + BOX_BORDER + BOX_PADDING * 2 + TEXT_HEIGHT) or 1
 
