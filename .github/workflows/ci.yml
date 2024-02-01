@@ -1,12 +1,7 @@
 name: CI
 on:
-  push:
-    branches:
-      - main
-      - dev
-  pull_request:
-    branches:
-      - main
+  - push
+  - pull_request
 jobs:
   build-windows:
     runs-on: windows-latest
