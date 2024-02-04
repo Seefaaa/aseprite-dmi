@@ -55,7 +55,7 @@ function Editor.new(title, filename, dmi, complete)
 	self.max_in_a_row     = 1
 	self.max_in_a_column  = 1
 
-	self.loading					= false
+	self.loading          = false
 
 	self.image_cache      = ImageCache.new()
 
@@ -345,12 +345,18 @@ function Editor:onpaint(ctx)
 	for _, text in ipairs(hovers) do
 		local text_size = ctx:measureText(text)
 		local size = Size(text_size.width + BOX_PADDING * 2, text_size.height + BOX_PADDING * 2)
+
+		local x = self.mouse.position.x - size.width / 2
+
+		if x < 0 then
+			x = 0
+		elseif x + size.width > ctx.width then
+			x = ctx.width - size.width
+		end
+
 		ctx.color = app.theme.color["button_normal_text"]
-		ctx:drawThemeRect("sunken_normal",
-			Rectangle(self.mouse.position.x - size.width / 2, self.mouse.position.y - size.height,
-				size.width, size.height))
-		ctx:fillText(text, self.mouse.position.x - text_size.width / 2,
-			self.mouse.position.y - text_size.height / 2 - size.height / 2)
+		ctx:drawThemeRect("sunken_normal", Rectangle(x, self.mouse.position.y - size.height, size.width, size.height))
+		ctx:fillText(text, x + BOX_PADDING, self.mouse.position.y - text_size.height / 2 - size.height / 2)
 	end
 end
 
