@@ -15,7 +15,9 @@
 		"scripts": [
 			{ "path": "./scripts/classes/cache.lua" },
 			{ "path": "./scripts/classes/dmi.lua" },
-			{ "path": "./scripts/classes/editor.lua" },
+			{ "path": "./scripts/classes/editor/editor.lua" },
+			{ "path": "./scripts/classes/editor/rendering.lua" },
+			{ "path": "./scripts/classes/editor/state.lua" },
 			{ "path": "./scripts/classes/lib.lua" },
 			{ "path": "./scripts/classes/statesprite.lua" },
 			{ "path": "./scripts/classes/widget.lua" },
