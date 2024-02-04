@@ -564,7 +564,7 @@ function Editor:repaint_states()
 	self.widgets = {}
 	local duplicates = {}
 	local min_index = (self.max_in_a_row * self.scroll)
-	local max_index = min_index + self.max_in_a_row * self.max_in_a_column
+	local max_index = min_index + self.max_in_a_row * (self.max_in_a_column + 1)
 	for index, state in ipairs(self.dmi.states) do
 		if index > min_index and index <= max_index then
 			local bounds = self:box_bounds(index)
