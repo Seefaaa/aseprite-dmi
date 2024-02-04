@@ -903,14 +903,6 @@ function Editor:state_properties(state)
 	}
 
 	dialog:button {
-		text = "Remove",
-		onclick = function()
-			self:remove_state(state)
-			dialog:close()
-		end,
-	}
-
-	dialog:button {
 		text = "Cancel",
 		onclick = function()
 			dialog:close()
