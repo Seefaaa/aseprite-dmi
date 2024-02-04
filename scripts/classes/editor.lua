@@ -634,20 +634,22 @@ function Editor:repaint_states()
 		function() self:new_state() end
 	))
 
-	table.insert(self.widgets, TextWidget.new(
-		self,
-		Rectangle(
-			bounds.x,
-			bounds.y + bounds.height / 2 - 3,
-			bounds.width,
-			TEXT_HEIGHT
-		),
-		{
-			normal = { part = "sunken_normal", color = "button_normal_text" },
-			hot = { part = "sunken_focused", color = "button_hot_text" },
-		},
-		"+"
-	))
+	if #self.dmi.states < max_index then
+		table.insert(self.widgets, TextWidget.new(
+			self,
+			Rectangle(
+				bounds.x,
+				bounds.y + bounds.height / 2 - 3,
+				bounds.width,
+				TEXT_HEIGHT
+			),
+			{
+				normal = { part = "sunken_normal", color = "button_normal_text" },
+				hot = { part = "sunken_focused", color = "button_hot_text" },
+			},
+			"+"
+		))
+	end
 
 	self:repaint()
 end
