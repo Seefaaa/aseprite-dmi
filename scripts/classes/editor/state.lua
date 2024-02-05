@@ -4,6 +4,7 @@
 function Editor:open_state(state)
 	for _, sprite in ipairs(app.sprites) do
 		if sprite.filename == app.fs.joinPath(self.dmi.temp, state.frame_key .. ".ase") then
+			self.switch_tab(sprite)
 			return
 		end
 	end

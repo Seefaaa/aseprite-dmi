@@ -294,3 +294,17 @@ function Editor:reorder_layers(state_sprite)
 	end
 	state_sprite.sprite:deleteLayer(state_sprite.sprite:newLayer())
 end
+
+--- Switches the tab to the sprite containing the state.
+--- @param sprite Sprite The sprite to be opened.
+function Editor.switch_tab(sprite)
+	local listener = nil
+	listener = app.events:on("sitechange", function()
+		if app.sprite == sprite then
+				app.events:off(listener --[[@as number]])
+		else
+			app.command.GotoNextTab()
+		end
+	end)
+	app.command.GotoNextTab()
+end
