@@ -271,30 +271,6 @@ function Editor:remove_nil_statesprites()
 	end
 end
 
---- Reorders the layers in the state_sprite based on their names.
---- Layers with names found in DIRECTION_NAMES are placed in reverse order,
---- while other layers are placed after the direction layers.
---- @param state_sprite StateSprite The sprite containing the layers to be reordered.
-function Editor:reorder_layers(state_sprite)
-	local dir_layers = {}
-	local other_layers = {}
-	for _, layer in ipairs(state_sprite.sprite.layers) do
-		local index = table.index_of(DIRECTION_NAMES, layer.name)
-		if index ~= 0 then
-			dir_layers[index] = layer
-		else
-			table.insert(other_layers, layer)
-		end
-	end
-	for i = 1, #dir_layers, 1 do
-		dir_layers[i].stackIndex = #dir_layers - i + 1
-	end
-	for i = 1, #other_layers, 1 do
-		other_layers[i].stackIndex = #dir_layers + i
-	end
-	state_sprite.sprite:deleteLayer(state_sprite.sprite:newLayer())
-end
-
 --- Switches the tab to the sprite containing the state.
 --- @param sprite Sprite The sprite to be opened.
 function Editor.switch_tab(sprite)

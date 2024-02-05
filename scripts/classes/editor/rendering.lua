@@ -96,7 +96,7 @@ function Editor:onpaint(ctx)
 				)
 			elseif widget.type == "TextWidget" then
 				local widget = widget --[[ @as TextWidget ]]
-				local text = fit_text(widget.text, ctx, widget.bounds.width)
+				local text = self.fit_text(widget.text, ctx, widget.bounds.width)
 				local size = ctx:measureText(text)
 
 				ctx.color = widget.text_color or app.theme.color[state.color]
@@ -454,4 +454,22 @@ function Editor:onwheel(ev)
 		self.scroll = new_scroll
 		self:repaint_states()
 	end
+end
+
+--- Fits the given text within the specified maximum width by truncating it with ellipsis if necessary.
+--- @param text string The text to fit.
+--- @param ctx GraphicsContext The context object used for measuring the text width.
+--- @param maxWidth number The maximum width allowed for the text.
+--- @return string text The fitted text.
+function Editor.fit_text(text, ctx, maxWidth)
+	local width = ctx:measureText(text).width
+	while width >= maxWidth do
+		if text:ends_with("...") then
+			text = text:sub(1, text:len() - 4) .. "..."
+		else
+			text = text:sub(1, text:len() - 1) .. "..."
+		end
+		width = ctx:measureText(text).width
+	end
+	return text
 end

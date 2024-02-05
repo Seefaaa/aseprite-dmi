@@ -1,3 +1,25 @@
+--- Creates a new DMI file with the specified width and height.
+--- Uses native new file dialog to get the dimensions.
+--- If the file creation is successful, opens the DMI Editor with the newly created file.
+function Editor.new_file()
+	local previous_sprite = app.sprite
+	if app.command.NewFile { width = 32, height = 32 } then
+		if previous_sprite ~= app.sprite then
+			local width = app.sprite.width
+			local height = app.sprite.height
+
+			app.command.CloseFile { ui = false }
+
+			lib:new_file("untitled", width, height, function(dmi, error)
+				if not error then
+					Editor.new(DIALOG_NAME, nil, dmi)
+				else
+					app.alert { title = DIALOG_NAME, text = { "Failed to create new DMI file", error } }
+				end
+			end)
+		end
+	end
+end
 
 --- Opens a state in the Aseprite editor by creating a new sprite and populating it with frames and layers based on the provided state.
 ---@param state State The state to be opened.
