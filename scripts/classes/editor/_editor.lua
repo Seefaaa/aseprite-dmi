@@ -21,6 +21,7 @@
 --- @field open_path string|nil The path of the file to be opened.
 --- @field image_cache ImageCache The image cache object.
 --- @field loading boolean Whether the editor is currently loading a file.
+--- @field modified boolean Whether a state has been modified.
 Editor = {}
 Editor.__index = Editor
 
@@ -56,6 +57,7 @@ function Editor.new(title, filename, dmi, complete)
 	self.max_in_a_column  = 1
 
 	self.loading          = false
+	self.modified         = false
 
 	self.image_cache      = ImageCache.new()
 
@@ -103,6 +105,18 @@ end
 --- Function to handle the "onclose" event of the Editor class.
 --- Cleans up resources and closes sprites when the editor is closed.
 function Editor:onclose()
+	if self.modified then
+		local result = app.alert {
+			title = "Warning",
+			text = { 'Saving changes to the sprite', 'Save "' .. file_name(self:path()) .. '" before closing?'},
+			buttons = { "&Save", "Do&n't Save", "&Cancel" }
+		}
+
+		if result == 1 then
+			self:save()
+		end
+	end
+
 	if self.dmi then
 		lib:remove_dir(self.dmi.temp)
 	end
@@ -189,7 +203,7 @@ function Editor:save()
 		id = "save_dmi_file",
 		save = true,
 		filetypes = { "dmi" },
-		filename = self.save_path or self.open_path or app.fs.joinPath(app.fs.userDocsPath, "untitled.dmi"),
+		filename = self:path(),
 		onchange = function()
 			self.save_path = save_dialog.data["save_dmi_file"]
 			save_dialog:close()
@@ -202,25 +216,36 @@ function Editor:save()
 	}
 
 	save_dialog:button {
-		text = "Save",
+		text = "&Save",
 		onclick = function()
 			save_dialog:close()
 			lib:save_file(self.dmi, save_dialog.data["save_dmi_file"], function(success, error)
 				if not success then
 					app.alert { title = "Save File", text = { "Failed to save", error } }
+				else
+					self.modified = false
 				end
 			end)
 		end
 	}
 
 	save_dialog:button {
-		text = "Cancel",
+		text = "&Cancel",
 		onclick = function()
 			save_dialog:close()
 		end
 	}
 
 	save_dialog:show()
+end
+
+--- Returns the path of the file to be saved.
+--- If `save_path` is set, it returns that path.
+--- Otherwise, if `open_path` is set, it returns that path.
+--- If neither `save_path` nor `open_path` is set, it returns the path to a default file named "untitled.dmi" in the user's documents folder.
+--- @return string path The path of the file to be saved.
+function Editor:path()
+	return self.save_path or self.open_path or app.fs.joinPath(app.fs.userDocsPath, "untitled.dmi")
 end
 
 --- This function is called before executing a command in the Aseprite editor. It checks the event name and performs specific actions based on the event type.

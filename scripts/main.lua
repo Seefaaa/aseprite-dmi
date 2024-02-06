@@ -110,7 +110,7 @@ function update_popup(up_to_date)
 				"Would you like to download it now?",
 				"Pressing \"OK\" will open the releases page in your browser."
 			},
-			buttons = { "OK", "Later" },
+			buttons = { "&OK", "&Later" },
 		}
 		if button == 1 then
 			lib:open_repo("releases")

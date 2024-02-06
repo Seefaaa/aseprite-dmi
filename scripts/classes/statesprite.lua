@@ -118,6 +118,7 @@ function StateSprite:save()
 	end
 
 	self.editor:repaint_states()
+	self.editor.modified = true
 
 	return true
 end

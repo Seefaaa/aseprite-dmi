@@ -166,7 +166,7 @@ function Editor:state_properties(state)
 	dialog:separator()
 
 	dialog:button {
-		text = "OK",
+		text = "&OK",
 		focus = true,
 		onclick = function()
 			local state_name = dialog.data["state_name"]
@@ -192,7 +192,7 @@ function Editor:state_properties(state)
 	}
 
 	dialog:button {
-		text = "Cancel",
+		text = "&Cancel",
 		onclick = function()
 			dialog:close()
 		end
