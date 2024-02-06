@@ -248,6 +248,9 @@ function Editor:path()
 	return self.save_path or self.open_path or app.fs.joinPath(app.fs.userDocsPath, "untitled.dmi")
 end
 
+--- @type string|nil
+local save_file_as = nil
+
 --- This function is called before executing a command in the Aseprite editor. It checks the event name and performs specific actions based on the event type.
 --- @param ev table The event object containing information about the event.
 function Editor:onbeforecommand(ev)
@@ -256,6 +259,15 @@ function Editor:onbeforecommand(ev)
 			if app.sprite == state_sprite.sprite then
 				if not state_sprite:save() then
 					ev.stopPropagation()
+				end
+				break
+			end
+		end
+	elseif ev.name == "SaveFileAs" then
+		for _, state_sprite in ipairs(self.open_sprites) do
+			if app.sprite == state_sprite.sprite then
+				if save_file_as == nil then
+					save_file_as = app.sprite.filename
 				end
 				break
 			end
@@ -284,7 +296,17 @@ end
 --- Callback function called after a Aseprite command is executed.
 --- @param ev table The event object containing information about the command.
 function Editor:onaftercommand(ev)
-
+	if ev.name == "SaveFileAs" then
+		for i, state_sprite in ipairs(self.open_sprites) do
+			if app.sprite == state_sprite.sprite then
+				if save_file_as ~= nil and save_file_as ~= app.sprite.filename then
+					table.remove(self.open_sprites, i)
+				end
+				save_file_as = nil
+				break
+			end
+		end
+	end
 end
 
 --- Removes unused statesprites from the editor.
