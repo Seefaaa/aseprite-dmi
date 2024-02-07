@@ -34,3 +34,13 @@ function table.concat_with_and(tbl)
 		return table.concat(tbl, ", ", 1, #tbl - 1) .. " and " .. tbl[#tbl]
 	end
 end
+
+--- Clones a table.
+--- @param tbl table The table to clone.
+function table.clone(tbl)
+	local clone = {}
+	for k, v in pairs(tbl) do
+		clone[k] = v
+	end
+	return clone
+end

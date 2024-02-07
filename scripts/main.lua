@@ -1,5 +1,17 @@
 --- @diagnostic disable: lowercase-global
 
+--- `OpenFile` event listener used to open the DMI Editor when a .dmi file is opened.
+--- @type number|nil
+local listener = nil
+
+--- Open editors.
+--- @type Editor[]
+open_editors = {}
+
+--- Lib instance.
+--- @type Lib|nil
+lib = nil
+
 --- Initializes the plugin. Called when the plugin is loaded.
 --- @param plugin Plugin The plugin object.
 function init(plugin)
@@ -11,7 +23,7 @@ function init(plugin)
 		return
 	end
 
-	app.events:on("aftercommand", function(ev)
+	listener = app.events:on("aftercommand", function(ev)
 		if ev.name == "OpenFile" then
 			if app.sprite and app.sprite.filename:ends_with(".dmi") then
 				local filename = app.sprite.filename
@@ -20,7 +32,7 @@ function init(plugin)
 				if not lib then
 					init_lib(plugin.path, function()
 						Editor.new(DIALOG_NAME, filename, nil, function()
-							lib:check_update(update_popup)
+							lib --[[@as Lib]]:check_update(update_popup)
 						end)
 					end)
 				else
@@ -77,9 +89,22 @@ end
 --- Exits the plugin. Called when the plugin is removed or Aseprite is closed.
 --- @param plugin Plugin The plugin object.
 function exit(plugin)
+	if listener then
+		app.events:off(listener)
+		listener = nil
+	end
+
+	if #open_editors > 0 then
+		local editors = table.clone(open_editors) --[[@as Editor[] ]]
+		for _, editor in ipairs(editors) do
+			editor:close(false)
+		end
+	end
+
 	if lib then
 		lib:remove_dir(lib.temp_dir, function()
 			lib.websocket:close()
+			lib = nil
 		end)
 	end
 end

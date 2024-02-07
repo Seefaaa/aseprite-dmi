@@ -22,6 +22,7 @@
 --- @field image_cache ImageCache The image cache object.
 --- @field loading boolean Whether the editor is currently loading a file.
 --- @field modified boolean Whether a state has been modified.
+--- @field closed boolean Whether the editor has been closed.
 Editor = {}
 Editor.__index = Editor
 
@@ -67,7 +68,7 @@ function Editor.new(title, filename, dmi, complete)
 
 	self.dialog           = Dialog {
 		title = title,
-		onclose = function() self:onclose() end
+		onclose = function() self:close(true) end
 	}
 
 	self.dialog:canvas {
@@ -99,12 +100,32 @@ function Editor.new(title, filename, dmi, complete)
 		error("No filename or dmi passed")
 	end
 
+	table.insert(open_editors, self)
+
 	return self
 end
 
 --- Function to handle the "onclose" event of the Editor class.
 --- Cleans up resources and closes sprites when the editor is closed.
-function Editor:onclose()
+--- @param event? boolean True if the event is triggered by the user closing the dialog, false otherwise.
+function Editor:close(event)
+	if self.closed then
+		return
+	end
+
+	self.closed = true
+
+	if not event then
+		self.dialog:close()
+	end
+
+	for i, editor in ipairs(open_editors) do
+		if editor == self then
+			table.remove(open_editors, i)
+			break
+		end
+	end
+
 	if self.modified then
 		local result = app.alert {
 			title = "Warning",
