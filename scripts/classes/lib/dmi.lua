@@ -58,3 +58,15 @@ function Lib:paste_state(dmi, callback)
 			callback(not error and State.new(data) or nil, error)
 		end)
 end
+
+--- Resizes the provided DMI to the specified width and height using the provided method.
+--- @param dmi Dmi The DMI object to be resized.
+--- @param width number The new width of the DMI.
+--- @param height number The new height of the DMI.
+--- @param method string The method to be used for resizing.
+--- @param callback fun(success: boolean, error?: string) The callback function to be called when the DMI is resized.
+function Lib:resize(dmi, width, height, method, callback)
+	self:send("resize", "'" .. json.encode(dmi) .. "' " .. width .. " " .. height .. " " .. method, function(_, error)
+		callback(not error, error)
+	end)
+end

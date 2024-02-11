@@ -297,7 +297,7 @@ function Editor:onbeforecommand(ev)
 		for _, state_sprite in ipairs(self.open_sprites) do
 			if app.sprite == state_sprite.sprite then
 				ev.stopPropagation()
-				app.alert { title = self.title, text = "Changing sprite size is not supported yet" }
+				self:sprite_size_dialog()
 				break
 			end
 		end

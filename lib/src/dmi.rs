@@ -249,10 +249,17 @@ impl Dmi {
 
         Ok(())
     }
-    pub fn serialize<P: AsRef<Path>>(&self, path: P) -> DmiResult<SerializedDmi> {
-        let path = find_dir(path.as_ref().join(self.name.clone())).ok_or(DmiError::FindDirError)?;
+    pub fn serialize<P: AsRef<Path>>(&self, path: P, exact_path: bool) -> DmiResult<SerializedDmi> {
+        let path = if !exact_path {
+            find_dir(path.as_ref().join(self.name.clone())).ok_or(DmiError::FindDirError)?
+        } else {
+            path.as_ref().to_str().unwrap().to_string()
+        };
         let path = Path::new(&path);
 
+        if path.exists() {
+            fs::remove_dir_all(path)?;
+        }
         fs::create_dir_all(path)?;
 
         let mut serialized_dmi = SerializedDmi {
@@ -283,6 +290,13 @@ impl Dmi {
         }
 
         Ok(dmi)
+    }
+    pub fn resize(&mut self, width: u32, height: u32, method: imageops::FilterType) {
+        self.width = width;
+        self.height = height;
+        for state in self.states.iter_mut() {
+            state.resize(width, height, method);
+        }
     }
 }
 
@@ -429,6 +443,11 @@ impl State {
             movement: self.movement,
             hotspots: self.hotspots,
         })
+    }
+    pub fn resize(&mut self, width: u32, height: u32, method: imageops::FilterType) {
+        for frame in self.frames.iter_mut() {
+            *frame = frame.resize_exact(width, height, method);
+        }
     }
 }
 

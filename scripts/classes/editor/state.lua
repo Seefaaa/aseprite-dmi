@@ -344,3 +344,216 @@ function Editor:paste_state()
 		end
 	end)
 end
+
+function Editor:sprite_size_dialog()
+	if not self.dmi then return end
+
+	local original_width = math.floor(self.dmi.width)
+	local original_height = math.floor(self.dmi.height)
+	local ratio = original_width / original_height
+
+	local dialog = Dialog {
+		title = "Sprite Size",
+		parent = self.dialog
+	}
+
+	dialog:separator { text = "Pixels:" }
+
+	dialog:number {
+		id = "sprite_width",
+		label = "Width:",
+		text = tostring(original_width),
+		decimals = 0,
+		onchange = function()
+			local width = dialog.data["sprite_width"]
+			dialog:modify {
+				id = "sprite_width_percentage",
+				text = tostring(width / original_width * 100)
+			}
+			if dialog.data["sprite_lock"] then
+				local height = math.floor(width / ratio)
+				dialog:modify {
+					id = "sprite_height",
+					text = tostring(height)
+				}
+				dialog:modify {
+					id = "sprite_height_percentage",
+					text = tostring(height / original_height * 100)
+				}
+			end
+		end
+	}
+
+	dialog:number {
+		id = "sprite_height",
+		label = "Height:",
+		text = tostring(original_height),
+		decimals = 0,
+		onchange = function()
+			local height = dialog.data["sprite_height"]
+			dialog:modify {
+				id = "sprite_height_percentage",
+				text = tostring(height / original_height * 100)
+			}
+			if dialog.data["sprite_lock"] then
+				local width = math.floor(height * ratio)
+				dialog:modify {
+					id = "sprite_width",
+					text = tostring(width)
+				}
+				dialog:modify {
+					id = "sprite_width_percentage",
+					text = tostring(width / original_width * 100)
+				}
+			end
+		end
+	}
+
+	dialog:check {
+		id = "sprite_lock",
+		label = "Lock Ratio",
+		selected = true,
+		onclick = function()
+			if dialog.data["sprite_lock"] then
+				local width = dialog.data["sprite_width"]
+				local height = math.floor(width / ratio)
+				dialog:modify {
+					id = "sprite_height",
+					text = tostring(height)
+				}
+				dialog:modify {
+					id = "sprite_height_percentage",
+					text = tostring(height / original_height * 100)
+				}
+			end
+		end
+	}
+
+	dialog:separator { text = "Percentage:" }
+
+	dialog:number {
+		id = "sprite_width_percentage",
+		label = "Width:",
+		text = "100",
+		onchange = function()
+			local width = dialog.data["sprite_width_percentage"]
+			width = math.floor(width * original_width / 100)
+			dialog:modify {
+				id = "sprite_width",
+				text = tostring(width)
+			}
+			if dialog.data["sprite_lock"] then
+				local height = math.floor(width / ratio)
+				dialog:modify {
+					id = "sprite_height",
+					text = tostring(height)
+				}
+				dialog:modify {
+					id = "sprite_height_percentage",
+					text = tostring(height / original_height * 100)
+				}
+			end
+		end
+	}
+
+	dialog:number {
+		id = "sprite_height_percentage",
+		label = "Height:",
+		text = "100",
+		onchange = function()
+			local height = dialog.data["sprite_height_percentage"]
+			height = math.floor(height * original_height / 100)
+			dialog:modify {
+				id = "sprite_height",
+				text = tostring(height)
+			}
+			if dialog.data["sprite_lock"] then
+				local width = math.floor(height * ratio)
+				dialog:modify {
+					id = "sprite_width",
+					text = tostring(width)
+				}
+				dialog:modify {
+					id = "sprite_width_percentage",
+					text = tostring(width / original_width * 100)
+				}
+			end
+		end
+	}
+
+	dialog:separator { text = "Interpolation:" }
+
+	dialog:combobox {
+		id = "sprite_method",
+		label = "Method:",
+		option = "Nearest-neighbor",
+		options = { "Nearest-neighbor", "Triangle", "CatmullRom", "Gaussian", "Lanczos3"},
+	}
+
+	dialog:button {
+		text = "&OK",
+		onclick = function()
+			local alert = app.alert {
+				title = "Warning",
+				text = "Resizing the sprite will re-open all open states without saving. Continue?",
+				buttons = { "&OK", "&Cancel" }
+			}
+
+			if alert == 2 then
+				return
+			end
+
+			dialog:close()
+
+			local width = dialog.data["sprite_width"]
+			local height = dialog.data["sprite_height"]
+			local method = dialog.data["sprite_method"]
+
+			if method == "Nearest-neighbor" then
+				method = "nearest"
+			elseif method == "Triangle" then
+				method = "triangle"
+			elseif method == "CatmullRom" then
+				method = "catmullrom"
+			elseif method == "Gaussian" then
+				method = "gaussian"
+			elseif method == "Lanczos3" then
+				method = "lanczos3"
+			end
+
+			lib:resize(self.dmi, width, height, method, function(success, error)
+				if success then
+					--- @type State[]
+					local open_states = {}
+					for _, state_sprite in ipairs(self.open_sprites) do
+						if state_sprite.sprite then
+							state_sprite.sprite:close()
+							table.insert(open_states, state_sprite.state)
+						end
+					end
+
+					self.open_sprites = {}
+					self.dmi.width = width
+					self.dmi.height = height
+					self.image_cache:load_previews(self.dmi)
+					self:repaint_states()
+
+					for _, state in ipairs(open_states) do
+						self:open_state(state)
+					end
+				else
+					app.alert { title = self.title, text = { "Failed to resize sprite", error } }
+				end
+			end)
+		end
+	}
+
+	dialog:button {
+		text = "&Cancel",
+		onclick = function()
+			dialog:close()
+		end
+	}
+
+	dialog:show()
+end

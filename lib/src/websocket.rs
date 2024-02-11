@@ -84,6 +84,7 @@ fn process_command(message: &str) -> Option<Message> {
         "newstate" => commands::new_state(args),
         "copystate" => commands::copy_state(args),
         "pastestate" => commands::paste_state(args),
+        "resize" => commands::resize(args),
         "removedir" => commands::remove_dir(args),
         "checkupdate" => commands::check_update(),
         "openrepo" => commands::open_repo(args),

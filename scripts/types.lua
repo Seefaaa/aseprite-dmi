@@ -557,6 +557,7 @@ end
 --- @field repaint fun(self: Dialog)
 --- @field show fun(self: Dialog, params?: Dialog.ShowParams)
 --- @field close fun(self: Dialog)
+--- @field modify fun(self: Dialog, params: Dialog.ModifyParams)
 
 --- @class Dialog.SeparatorParams
 --- @field id? string
@@ -625,6 +626,10 @@ end
 
 --- @class Dialog.ShowParams
 --- @field wait boolean
+
+--- @class Dialog.ModifyParams: table<string, any>
+--- @field id string
+--- @field title? string
 
 --- @class Cel: table
 --- @field sprite Sprite

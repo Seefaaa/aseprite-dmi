@@ -20,7 +20,7 @@ pub fn new_file(mut arguments: impl Iterator<Item = String>) -> CommandResult {
         create_dir_all(out_dir)?;
     }
 
-    let dmi = Dmi::new(name, width, height).serialize(out_dir)?;
+    let dmi = Dmi::new(name, width, height).serialize(out_dir, false)?;
     let dmi = serde_json::to_string(&dmi)?;
 
     Ok(Some(dmi))
@@ -42,7 +42,7 @@ pub fn open_file(mut arguments: impl Iterator<Item = String>) -> CommandResult {
             create_dir_all(output)?;
         }
 
-        let dmi = Dmi::open(file)?.serialize(output)?;
+        let dmi = Dmi::open(file)?.serialize(output, false)?;
         let dmi = serde_json::to_string(&dmi)?;
 
         return Ok(Some(dmi));
@@ -134,6 +134,34 @@ pub fn paste_state(mut arguments: impl Iterator<Item = String>) -> CommandResult
     let state = serde_json::to_string(&state)?;
 
     Ok(Some(state))
+}
+
+pub fn resize(mut arguments: impl Iterator<Item = String>) -> CommandResult {
+    let dmi = arguments.next().context("No json provided")?;
+    let width: u32 = arguments.next().context("No width provided")?.parse()?;
+    let height: u32 = arguments.next().context("No height provided")?.parse()?;
+    let method = arguments.next().context("No method provided")?;
+
+    let method = match method.as_str() {
+        "nearest" => image::imageops::FilterType::Nearest,
+        "triangle" => image::imageops::FilterType::Triangle,
+        "catmullrom" => image::imageops::FilterType::CatmullRom,
+        "gaussian" => image::imageops::FilterType::Gaussian,
+        "lanczos3" => image::imageops::FilterType::Lanczos3,
+        _ => bail!("Unknown method: {method}"),
+    };
+
+    let dmi = serde_json::from_str::<SerializedDmi>(&dmi)?;
+
+    let temp = dmi.temp.to_owned();
+    let temp = Path::new(&temp);
+
+    let mut dmi = Dmi::deserialize(dmi)?;
+
+    dmi.resize(width, height, method);
+    dmi.serialize(temp, true)?;
+
+    Ok(None)
 }
 
 pub fn remove_dir(mut arguments: impl Iterator<Item = String>) -> CommandResult {
