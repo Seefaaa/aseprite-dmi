@@ -73,7 +73,7 @@ end
 
 --- Removes a directory at the specified path.
 --- @param path string The path of the directory to be removed.
---- @param callback? fun(success: boolean, error?: string) The callback function to be called when the directory is removed.
+--- @param callback? fun(success: boolean, error: string|nil) The callback function to be called when the directory is removed.
 function Lib:remove_dir(path, callback)
 	self:send("removedir", '"' .. path .. '"', callback and function(_, error)
 		callback(not error, error)
@@ -81,7 +81,7 @@ function Lib:remove_dir(path, callback)
 end
 
 --- Checks for updates.
---- @param callback fun(up_to_date: boolean, error?: string) The callback function to be called when the update check is complete.
+--- @param callback fun(up_to_date: boolean, error: string|nil) The callback function to be called when the update check is complete.
 function Lib:check_update(callback)
 	self:send("checkupdate", nil, function(data, error)
 		callback(not error and data == true, error)

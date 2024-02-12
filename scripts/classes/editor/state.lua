@@ -291,6 +291,7 @@ function Editor:new_state()
 
 	lib:new_state(self.dmi, function(state, error)
 		if not error then
+			self.modified = true
 			table.insert(self.dmi.states, state)
 			self.image_cache:load_state(self.dmi, state --[[@as State]])
 			self:repaint_states()
