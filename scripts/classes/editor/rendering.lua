@@ -379,8 +379,7 @@ end
 function Editor:onmousemove(ev)
 	local mouse_position = Point(ev.x, ev.y)
 	local should_repaint = false
-	--- @type AnyWidget[]
-	local hovering_widgets = {}
+	local hovering_widgets = {} --[[@type AnyWidget[] ]]
 
 	for _, widget in ipairs(self.widgets) do
 		if widget.bounds:contains(mouse_position) then

@@ -108,8 +108,7 @@ end
 --- @param state State The state object to edit.
 function Editor:state_properties(state)
 	local dialog = Dialog {
-		title = "State Properties",
-		parent = self.dialog
+		title = "State Properties"
 	}
 
 	dialog:entry {
@@ -205,8 +204,7 @@ end
 --- @param state State
 --- @param directions 1|4|8
 function Editor:set_state_dirs(state, directions)
-	--- @type StateSprite|nil
-	local state_sprite = nil
+	local state_sprite = nil --[[@type StateSprite|nil]]
 	for _, state_sprite_ in ipairs(self.open_sprites) do
 		if state_sprite_.state == state then
 			state_sprite = state_sprite_
@@ -230,8 +228,7 @@ function Editor:set_state_dirs(state, directions)
 					layer.isVisible = not layer.isVisible
 				end
 			else
-				--- @type Layer|nil
-				local primary_layer = nil
+				local primary_layer = nil --[[@type Layer|nil]]
 				for _, layer in ipairs(sprite.layers) do
 					if layer.name == DIRECTION_NAMES[1] then
 						primary_layer = layer
@@ -354,8 +351,7 @@ function Editor:sprite_size_dialog()
 	local ratio = original_width / original_height
 
 	local dialog = Dialog {
-		title = "Sprite Size",
-		parent = self.dialog
+		title = "Sprite Size"
 	}
 
 	dialog:separator { text = "Pixels:" }
@@ -488,7 +484,7 @@ function Editor:sprite_size_dialog()
 		id = "sprite_method",
 		label = "Method:",
 		option = "Nearest-neighbor",
-		options = { "Nearest-neighbor", "Triangle", "CatmullRom", "Gaussian", "Lanczos3"},
+		options = { "Nearest-neighbor", "Triangle", "CatmullRom", "Gaussian", "Lanczos3" },
 	}
 
 	dialog:button {
@@ -524,8 +520,7 @@ function Editor:sprite_size_dialog()
 
 			lib:resize(self.dmi, width, height, method, function(success, error)
 				if success then
-					--- @type State[]
-					local open_states = {}
+					local open_states = {} --[[@type State[] ]]
 					for _, state_sprite in ipairs(self.open_sprites) do
 						if state_sprite.sprite then
 							state_sprite.sprite:close()

@@ -118,7 +118,6 @@ function Editor:save_warning()
 
 	local dialog = Dialog {
 		title = "Warning",
-		parent = self.dialog,
 	}
 
 	dialog:label {
@@ -138,10 +137,10 @@ function Editor:save_warning()
 		text = "&Save",
 		focus = true,
 		onclick = function()
-			if self:save(dialog) then
+			self:save(function()
 				result = 1
 				dialog:close()
-			end
+			end)
 		end
 	}
 
@@ -273,16 +272,15 @@ end
 --- Saves the current DMI file.
 --- If the DMI file is not set, the function returns without doing anything.
 --- Displays a success or failure message using the Aseprite app.alert function.
---- @param parent? Dialog The parent dialog.
---- @return boolean saving Whether the file will be saved.
-function Editor:save(parent)
+--- @param on_save? fun() The callback function to be called after the save button is clicked.
+--- @param bounds? Rectangle The bounds of the dialog.
+function Editor:save(on_save, bounds)
 	if not self.dmi then return false end
 
-	local saving = false
+	local context = nil --[[@type GraphicsContext|nil]]
 
 	local dialog = Dialog {
 		title = "Save File",
-		parent = parent or self.dialog
 	}
 
 	dialog:file {
@@ -292,19 +290,29 @@ function Editor:save(parent)
 		filename = self:path(),
 		onchange = function()
 			self.save_path = dialog.data.save_dmi_file
+
+			local bounds = dialog.bounds
+			local width = context --[[@as GraphicsContext]]:measureText(self.save_path).width + 20
+
 			dialog:close()
-			self:save()
+			self:save(on_save, Rectangle(bounds.x + (bounds.width - width) / 2, bounds.y, width, bounds.height))
 		end,
 	}
 
 	dialog:label {
-		text = dialog.data.save_dmi_file,
+		focus = true,
+		text = '"' .. dialog.data.save_dmi_file .. '"'
 	}
+
+	dialog:canvas { height = 1, onpaint = function(ev) context = ev.context end }
 
 	dialog:button {
 		text = "&Save",
+		focus = true,
 		onclick = function()
-			saving = true
+			if on_save then
+				on_save()
+			end
 			dialog:close()
 			lib:save_file(self.dmi, dialog.data.save_dmi_file, function(success, error)
 				if not success then
@@ -323,9 +331,11 @@ function Editor:save(parent)
 		end
 	}
 
-	dialog:show()
-
-	return saving
+	if bounds then
+		dialog:show { bounds = bounds }
+	else
+		dialog:show()
+	end
 end
 
 --- Returns the path of the file to be saved.

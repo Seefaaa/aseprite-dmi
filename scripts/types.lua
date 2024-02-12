@@ -626,7 +626,7 @@ end
 --- @field onclick? function The function to be called when the check is clicked.
 
 --- @class Dialog.ShowParams
---- @field wait boolean
+--- @field wait? boolean
 --- @field bounds? Rectangle
 
 --- @class Dialog.ModifyParams: table<string, any>
