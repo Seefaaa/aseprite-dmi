@@ -169,24 +169,24 @@ function Editor:state_properties(state)
 		text = "&OK",
 		focus = true,
 		onclick = function()
-			local state_name = dialog.data["state_name"]
+			local state_name = dialog.data.state_name
 			if #state_name > 0 and state.name ~= state_name then
-				state.name = dialog.data["state_name"]
+				state.name = dialog.data.state_name
 				self:repaint_states()
 			end
-			local direction = tonumber(dialog.data["state_directions"])
+			local direction = tonumber(dialog.data.state_directions)
 			if (direction == 1 or direction == 4 or direction == 8) and state.dirs ~= direction then
 				self:set_state_dirs(state, direction)
 			end
-			local loop = tonumber(dialog.data["state_loop"])
+			local loop = tonumber(dialog.data.state_loop)
 			if loop then
 				loop = math.floor(loop)
 				if loop >= 0 then
 					state.loop_ = loop
 				end
 			end
-			state.movement = dialog.data["state_movement"] or false
-			state.rewind = dialog.data["state_rewind"] or false
+			state.movement = dialog.data.state_movement or false
+			state.rewind = dialog.data.state_rewind or false
 			dialog:close()
 		end
 	}
@@ -365,12 +365,12 @@ function Editor:sprite_size_dialog()
 		text = tostring(original_width),
 		decimals = 0,
 		onchange = function()
-			local width = dialog.data["sprite_width"]
+			local width = dialog.data.sprite_width
 			dialog:modify {
 				id = "sprite_width_percentage",
 				text = tostring(width / original_width * 100)
 			}
-			if dialog.data["sprite_lock"] then
+			if dialog.data.sprite_lock then
 				local height = math.floor(width / ratio)
 				dialog:modify {
 					id = "sprite_height",
@@ -390,12 +390,12 @@ function Editor:sprite_size_dialog()
 		text = tostring(original_height),
 		decimals = 0,
 		onchange = function()
-			local height = dialog.data["sprite_height"]
+			local height = dialog.data.sprite_height
 			dialog:modify {
 				id = "sprite_height_percentage",
 				text = tostring(height / original_height * 100)
 			}
-			if dialog.data["sprite_lock"] then
+			if dialog.data.sprite_lock then
 				local width = math.floor(height * ratio)
 				dialog:modify {
 					id = "sprite_width",
@@ -414,8 +414,8 @@ function Editor:sprite_size_dialog()
 		label = "Lock Ratio",
 		selected = true,
 		onclick = function()
-			if dialog.data["sprite_lock"] then
-				local width = dialog.data["sprite_width"]
+			if dialog.data.sprite_lock then
+				local width = dialog.data.sprite_width
 				local height = math.floor(width / ratio)
 				dialog:modify {
 					id = "sprite_height",
@@ -436,13 +436,13 @@ function Editor:sprite_size_dialog()
 		label = "Width:",
 		text = "100",
 		onchange = function()
-			local width = dialog.data["sprite_width_percentage"]
+			local width = dialog.data.sprite_width_percentage
 			width = math.floor(width * original_width / 100)
 			dialog:modify {
 				id = "sprite_width",
 				text = tostring(width)
 			}
-			if dialog.data["sprite_lock"] then
+			if dialog.data.sprite_lock then
 				local height = math.floor(width / ratio)
 				dialog:modify {
 					id = "sprite_height",
@@ -461,13 +461,13 @@ function Editor:sprite_size_dialog()
 		label = "Height:",
 		text = "100",
 		onchange = function()
-			local height = dialog.data["sprite_height_percentage"]
+			local height = dialog.data.sprite_height_percentage
 			height = math.floor(height * original_height / 100)
 			dialog:modify {
 				id = "sprite_height",
 				text = tostring(height)
 			}
-			if dialog.data["sprite_lock"] then
+			if dialog.data.sprite_lock then
 				local width = math.floor(height * ratio)
 				dialog:modify {
 					id = "sprite_width",
@@ -505,9 +505,9 @@ function Editor:sprite_size_dialog()
 
 			dialog:close()
 
-			local width = dialog.data["sprite_width"]
-			local height = dialog.data["sprite_height"]
-			local method = dialog.data["sprite_method"]
+			local width = dialog.data.sprite_width
+			local height = dialog.data.sprite_height
+			local method = dialog.data.sprite_method
 
 			if method == "Nearest-neighbor" then
 				method = "nearest"

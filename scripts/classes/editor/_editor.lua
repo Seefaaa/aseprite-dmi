@@ -291,14 +291,14 @@ function Editor:save(parent)
 		filetypes = { "dmi" },
 		filename = self:path(),
 		onchange = function()
-			self.save_path = dialog.data["save_dmi_file"]
+			self.save_path = dialog.data.save_dmi_file
 			dialog:close()
 			self:save()
 		end,
 	}
 
 	dialog:label {
-		text = dialog.data["save_dmi_file"],
+		text = dialog.data.save_dmi_file,
 	}
 
 	dialog:button {
@@ -306,7 +306,7 @@ function Editor:save(parent)
 		onclick = function()
 			saving = true
 			dialog:close()
-			lib:save_file(self.dmi, dialog.data["save_dmi_file"], function(success, error)
+			lib:save_file(self.dmi, dialog.data.save_dmi_file, function(success, error)
 				if not success then
 					app.alert { title = "Save File", text = { "Failed to save", error } }
 				else
