@@ -558,6 +558,7 @@ end
 --- @field show fun(self: Dialog, params?: Dialog.ShowParams)
 --- @field close fun(self: Dialog)
 --- @field modify fun(self: Dialog, params: Dialog.ModifyParams)
+--- @field newrow fun(self: Dialog, params?: Dialog.NewRowParams)
 
 --- @class Dialog.SeparatorParams
 --- @field id? string
@@ -573,8 +574,8 @@ end
 
 --- @class Dialog.CanvasParams
 --- @field id? string
---- @field width number
---- @field height number
+--- @field width? number
+--- @field height? number
 --- @field onpaint? fun(ev: Dialog.CanvasEvent)
 --- @field onmousedown? function
 --- @field onmouseup? function
@@ -626,10 +627,14 @@ end
 
 --- @class Dialog.ShowParams
 --- @field wait boolean
+--- @field bounds? Rectangle
 
 --- @class Dialog.ModifyParams: table<string, any>
 --- @field id string
 --- @field title? string
+
+--- @class Dialog.NewRowParams
+--- @field always? boolean
 
 --- @class Cel: table
 --- @field sprite Sprite

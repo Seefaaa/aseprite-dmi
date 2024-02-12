@@ -1,8 +1,12 @@
 --- @diagnostic disable: lowercase-global
 
---- `OpenFile` event listener used to open the DMI Editor when a .dmi file is opened.
+--- After command listener.
 --- @type number|nil
-local listener = nil
+local after_listener = nil
+
+--- Before command listener.
+--- @type number|nil
+local before_listener = nil
 
 --- Open editors.
 --- @type Editor[]
@@ -23,7 +27,7 @@ function init(plugin)
 		return
 	end
 
-	listener = app.events:on("aftercommand", function(ev)
+	after_listener = app.events:on("aftercommand", function(ev)
 		if ev.name == "OpenFile" then
 			if app.sprite and app.sprite.filename:ends_with(".dmi") then
 				local filename = app.sprite.filename
@@ -37,6 +41,21 @@ function init(plugin)
 					end)
 				else
 					Editor.new(DIALOG_NAME, filename)
+				end
+			end
+		end
+	end)
+
+	before_listener = app.events:on("beforecommand", function(ev)
+		if ev.name == "Exit" then
+			local stopped = false
+			if #open_editors > 0 then
+				local editors = table.clone(open_editors) --[[@as Editor[] ]]
+				for _, editor in ipairs(editors) do
+					if not editor:close(false) and not stopped then
+						stopped = true
+						ev.stopPropagation()
+					end
 				end
 			end
 		end
@@ -89,18 +108,20 @@ end
 --- Exits the plugin. Called when the plugin is removed or Aseprite is closed.
 --- @param plugin Plugin The plugin object.
 function exit(plugin)
-	if listener then
-		app.events:off(listener)
-		listener = nil
+	if after_listener then
+		app.events:off(after_listener)
+		after_listener = nil
 	end
-
+	if before_listener then
+		app.events:off(before_listener)
+		before_listener = nil
+	end
 	if #open_editors > 0 then
 		local editors = table.clone(open_editors) --[[@as Editor[] ]]
 		for _, editor in ipairs(editors) do
-			editor:close(false)
+			editor:close(false, true)
 		end
 	end
-
 	if lib then
 		lib:remove_dir(lib.temp_dir, function()
 			lib.websocket:close()

@@ -66,25 +66,7 @@ function Editor.new(title, filename, dmi, complete)
 
 	self.aftercommand     = app.events:on("aftercommand", function(ev) self:onaftercommand(ev) end)
 
-	self.dialog           = Dialog {
-		title = title,
-		onclose = function() self:close(true) end
-	}
-
-	self.dialog:canvas {
-		width = self.canvas_width,
-		height = self.canvas_height,
-		onpaint = function(ev) self:onpaint(ev.context) end,
-		onmousedown = function(ev) self:onmousedown(ev) end,
-		onmouseup = function(ev) self:onmouseup(ev) end,
-		onmousemove = function(ev) self:onmousemove(ev) end,
-		onwheel = function(ev) self:onwheel(ev) end
-	}
-
-	self.dialog:button {
-		text = "Save",
-		onclick = function() self:save() end
-	}
+	self:new_dialog(title)
 
 	if filename then
 		self.loading = true
@@ -105,36 +87,113 @@ function Editor.new(title, filename, dmi, complete)
 	return self
 end
 
+--- Creates a new dialog for the editor with the specified title.
+--- @param title string The title of the dialog.
+function Editor:new_dialog(title)
+	self.dialog = Dialog {
+		title = title,
+		onclose = function() self:close(true) end
+	}
+
+	self.dialog:canvas {
+		width = self.canvas_width,
+		height = self.canvas_height,
+		onpaint = function(ev) self:onpaint(ev.context) end,
+		onmousedown = function(ev) self:onmousedown(ev) end,
+		onmouseup = function(ev) self:onmouseup(ev) end,
+		onmousemove = function(ev) self:onmousemove(ev) end,
+		onwheel = function(ev) self:onwheel(ev) end
+	}
+
+	self.dialog:button {
+		text = "Save",
+		onclick = function() self:save() end
+	}
+end
+
+--- Displays a warning dialog asking the user to save changes to the sprite before closing.
+--- @return 0|1|2 result 0 if the user cancels the operation, 1 if the user saves the file, 2 if the user doesn't save the file.
+function Editor:save_warning()
+	local result = 0
+
+	local dialog = Dialog {
+		title = "Warning",
+		parent = self.dialog,
+	}
+
+	dialog:label {
+		text = "Save changes to the sprite",
+		focus = true
+	}
+
+	dialog:newrow()
+
+	dialog:label {
+		text = '"' .. file_name(self:path()) .. '" before closing?',
+	}
+
+	dialog:canvas { height = 1 }
+
+	dialog:button {
+		text = "&Save",
+		focus = true,
+		onclick = function()
+			if self:save(dialog) then
+				result = 1
+				dialog:close()
+			end
+		end
+	}
+
+	dialog:button {
+		text = "Do&n't Save",
+		onclick = function()
+			result = 2
+			dialog:close()
+		end
+	}
+
+	dialog:button {
+		text = "&Cancel",
+		onclick = function()
+			dialog:close()
+		end
+	}
+
+	dialog:show()
+
+	return result
+end
+
 --- Function to handle the "onclose" event of the Editor class.
 --- Cleans up resources and closes sprites when the editor is closed.
---- @param event? boolean True if the event is triggered by the user closing the dialog, false otherwise.
-function Editor:close(event)
+--- @param event boolean True if the event is triggered by the user closing the dialog, false otherwise.
+--- @param force? boolean True if the editor should be closed without asking the user to save changes, false otherwise.
+--- @return boolean closed Whether the editor has been closed.
+function Editor:close(event, force)
 	if self.closed then
-		return
+		return true
+	end
+
+	if self.modified and not force then
+		if event then
+			local bounds = self.dialog.bounds
+			self:new_dialog(self.title)
+			self.dialog:show { wait = false, bounds = bounds }
+		end
+
+		if self:save_warning() == 0 then
+			return false
+		end
 	end
 
 	self.closed = true
-
-	if not event then
-		self.dialog:close()
-	end
+	self.dialog:close()
 
 	for i, editor in ipairs(open_editors) do
 		if editor == self then
 			table.remove(open_editors, i)
 			break
-		end
-	end
-
-	if self.modified then
-		local result = app.alert {
-			title = "Warning",
-			text = { 'Saving changes to the sprite', 'Save "' .. file_name(self:path()) .. '" before closing?'},
-			buttons = { "&Save", "Do&n't Save", "&Cancel" }
-		}
-
-		if result == 1 then
-			self:save()
 		end
 	end
 
@@ -159,6 +218,8 @@ function Editor:close(event)
 	self.open_sprites = nil
 	self.beforecommand = nil
 	self.aftercommand = nil
+
+	return true
 end
 
 --- Shows the editor dialog.
@@ -212,35 +273,40 @@ end
 --- Saves the current DMI file.
 --- If the DMI file is not set, the function returns without doing anything.
 --- Displays a success or failure message using the Aseprite app.alert function.
-function Editor:save()
-	if not self.dmi then return end
+--- @param parent? Dialog The parent dialog.
+--- @return boolean saving Whether the file will be saved.
+function Editor:save(parent)
+	if not self.dmi then return false end
 
-	local save_dialog = Dialog {
+	local saving = false
+
+	local dialog = Dialog {
 		title = "Save File",
-		parent = self.dialog
+		parent = parent or self.dialog
 	}
 
-	save_dialog:file {
+	dialog:file {
 		id = "save_dmi_file",
 		save = true,
 		filetypes = { "dmi" },
 		filename = self:path(),
 		onchange = function()
-			self.save_path = save_dialog.data["save_dmi_file"]
-			save_dialog:close()
+			self.save_path = dialog.data["save_dmi_file"]
+			dialog:close()
 			self:save()
 		end,
 	}
 
-	save_dialog:label {
-		text = save_dialog.data["save_dmi_file"],
+	dialog:label {
+		text = dialog.data["save_dmi_file"],
 	}
 
-	save_dialog:button {
+	dialog:button {
 		text = "&Save",
 		onclick = function()
-			save_dialog:close()
-			lib:save_file(self.dmi, save_dialog.data["save_dmi_file"], function(success, error)
+			saving = true
+			dialog:close()
+			lib:save_file(self.dmi, dialog.data["save_dmi_file"], function(success, error)
 				if not success then
 					app.alert { title = "Save File", text = { "Failed to save", error } }
 				else
@@ -250,14 +316,16 @@ function Editor:save()
 		end
 	}
 
-	save_dialog:button {
+	dialog:button {
 		text = "&Cancel",
 		onclick = function()
-			save_dialog:close()
+			dialog:close()
 		end
 	}
 
-	save_dialog:show()
+	dialog:show()
+
+	return saving
 end
 
 --- Returns the path of the file to be saved.
@@ -345,7 +413,7 @@ function Editor.switch_tab(sprite)
 	local listener = nil
 	listener = app.events:on("sitechange", function()
 		if app.sprite == sprite then
-				app.events:off(listener --[[@as number]])
+			app.events:off(listener --[[@as number]])
 		else
 			app.command.GotoNextTab()
 		end
