@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context as _, Result};
 use std::env::current_exe;
-use std::fs::{copy, create_dir_all, remove_dir_all, remove_file, write};
+use std::fs::{copy, create_dir_all, read_to_string, remove_dir_all, remove_file, write};
 use std::net::TcpListener;
 use std::path::Path;
 use std::process::{self, Command};
@@ -15,47 +15,45 @@ use crate::{commands, format_error, format_event};
 pub fn serve(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     let parent_exe = arguments.next().context("No parent exe provided")?;
     let port: u16 = arguments.next().context("No port provided")?.parse()?;
+
     let server = TcpListener::bind(("127.0.0.1", port))?;
 
     let parent_exe = Arc::new(parent_exe);
-    let connected = Arc::new(Mutex::new(false));
+    let connections = Arc::new(Mutex::new(0u8));
 
     {
         let parent_exe = Arc::clone(&parent_exe);
-        let connected = Arc::clone(&connected);
+        let connections = Arc::clone(&connections);
         spawn(move || {
             sleep(Duration::from_secs(30));
 
-            let connected = connected.lock().unwrap();
-            if !*connected {
+            let connections = connections.lock().unwrap();
+            if *connections == 0 {
                 exit(&parent_exe);
             }
         });
     }
 
     for stream in server.incoming().flatten() {
-        let connected = Arc::clone(&connected);
-
-        if *connected.lock().unwrap() {
-            continue;
-        }
-
         let parent_exe = Arc::clone(&parent_exe);
+        let connections = Arc::clone(&connections);
 
         spawn(move || {
             if let Ok(mut websocket) = accept(stream) {
                 {
-                    let mut connected = connected.lock().unwrap();
-                    *connected = true;
+                    let mut connections = connections.lock().unwrap();
+                    *connections += 1;
                 }
 
                 loop {
                     let Ok(message) = websocket.read() else {
-                        exit(&parent_exe)
+                        ws_close(&parent_exe, &connections);
+                        break;
                     };
 
                     if message.is_close() {
-                        exit(&parent_exe)
+                        ws_close(&parent_exe, &connections);
+                        break;
                     }
 
                     if message.is_text() {
@@ -98,6 +96,15 @@ fn process_command(message: &str) -> Option<Message> {
     })
 }
 
+fn ws_close(parent_exe: &str, connections: &Arc<Mutex<u8>>) {
+    let mut connections = connections.lock().unwrap();
+    *connections -= 1;
+
+    if *connections == 0 {
+        exit(parent_exe);
+    }
+}
+
 pub fn start(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     let temp_dir = arguments.next().context("No temp dir provided")?;
 
@@ -108,13 +115,20 @@ pub fn start(mut arguments: impl Iterator<Item = String>) -> Result<()> {
         .to_string();
 
     let temp_dir = Path::new(&temp_dir);
+    let port_path = temp_dir.join("port");
 
     if !temp_dir.exists() {
         create_dir_all(temp_dir)?;
+    } else if port_path.exists() {
+        let port = read_to_string(&port_path)?;
+        let port: u16 = port.parse()?;
+        if TcpListener::bind(("127.0.0.1", port)).is_err() {
+            return Ok(());
+        }
     }
 
     copy(&current_exe, temp_dir.join("lib.exe"))?;
-    write(temp_dir.join("port"), &port)?;
+    write(&port_path, &port)?;
     Command::new(&current_exe)
         .arg("serve")
         .arg(current_exe)
