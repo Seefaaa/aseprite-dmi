@@ -17,11 +17,10 @@ function Lib.new(lib_path, temp_dir)
 	local self = setmetatable({}, Lib)
 
 	local port = nil
-	local file_name = app.fs.joinPath(temp_dir, "port")
 
-	os.execute(lib_path .. ' init "' .. file_name .. '"')
+	os.execute(lib_path .. ' start "' .. temp_dir .. '"')
 
-	local handle = io.open(file_name, "r")
+	local handle = io.open(app.fs.joinPath(temp_dir, "port"), "r")
 	if handle then
 		local output = handle:read("*l")
 		local success = handle:close()
@@ -30,9 +29,7 @@ function Lib.new(lib_path, temp_dir)
 		end
 	end
 
-	if port == nil then
-		error("Failed to start websocket server.")
-	end
+	assert(port, "Failed to start websocket server. Check your antivirus and firewall settings.")
 
 	self.path = lib_path
 	self.temp_dir = temp_dir
@@ -69,27 +66,4 @@ function Lib:send(command, data, callback)
 	if callback then
 		self:once(command, callback)
 	end
-end
-
---- Removes a directory at the specified path.
---- @param path string The path of the directory to be removed.
---- @param callback? fun(success: boolean, error: string|nil) The callback function to be called when the directory is removed.
-function Lib:remove_dir(path, callback)
-	self:send("removedir", '"' .. path .. '"', callback and function(_, error)
-		callback(not error, error)
-	end or nil)
-end
-
---- Checks for updates.
---- @param callback fun(up_to_date: boolean, error: string|nil) The callback function to be called when the update check is complete.
-function Lib:check_update(callback)
-	self:send("checkupdate", nil, function(data, error)
-		callback(not error and data == true, error)
-	end)
-end
-
---- Opens the repository on browser.
---- @param path? string The path to use in url if not specified it will open the main page.
-function Lib:open_repo(path)
-	self:send("openrepo", path and ('"' .. path .. '"') or nil)
 end

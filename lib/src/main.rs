@@ -14,7 +14,8 @@ fn main() {
     if let Some(command) = arguments.next() {
         if let Err(e) = match command.to_lowercase().as_str() {
             "serve" => websocket::serve(arguments),
-            "init" => websocket::init(arguments),
+            "start" => websocket::start(arguments),
+            "delete" => websocket::delete(arguments),
             _ => Ok(()),
         } {
             println!("{}", e);

@@ -123,10 +123,8 @@ function exit(plugin)
 		end
 	end
 	if lib then
-		lib:remove_dir(lib.temp_dir, function()
-			lib.websocket:close()
-			lib = nil
-		end)
+		lib.websocket:close()
+		lib = nil
 	end
 end
 

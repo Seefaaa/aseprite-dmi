@@ -1,31 +1,37 @@
 use anyhow::{anyhow, Context as _, Result};
 use std::env::current_exe;
-use std::fs::{create_dir_all, write};
-use std::net::{TcpListener, TcpStream};
+use std::fs::{copy, create_dir_all, remove_dir_all, remove_file, write};
+use std::net::TcpListener;
 use std::path::Path;
-use std::process::{exit, Command};
+use std::process::{self, Command};
 use std::sync::{Arc, Mutex};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use tungstenite::{accept, Message, WebSocket};
+use tungstenite::{accept, Message};
 
 use crate::utils::split_args;
 use crate::{commands, format_error, format_event};
 
 pub fn serve(mut arguments: impl Iterator<Item = String>) -> Result<()> {
+    let parent_exe = arguments.next().context("No parent exe provided")?;
     let port: u16 = arguments.next().context("No port provided")?.parse()?;
     let server = TcpListener::bind(("127.0.0.1", port))?;
 
+    let parent_exe = Arc::new(parent_exe);
     let connected = Arc::new(Mutex::new(false));
-    let connected_ = Arc::clone(&connected);
-    spawn(move || {
-        sleep(Duration::from_secs(30));
 
-        let connected = connected_.lock().unwrap();
-        if !*connected {
-            exit(0);
-        }
-    });
+    {
+        let parent_exe = Arc::clone(&parent_exe);
+        let connected = Arc::clone(&connected);
+        spawn(move || {
+            sleep(Duration::from_secs(30));
+
+            let connected = connected.lock().unwrap();
+            if !*connected {
+                exit(&parent_exe);
+            }
+        });
+    }
 
     for stream in server.incoming().flatten() {
         let connected = Arc::clone(&connected);
@@ -33,6 +39,8 @@ pub fn serve(mut arguments: impl Iterator<Item = String>) -> Result<()> {
         if *connected.lock().unwrap() {
             continue;
         }
+
+        let parent_exe = Arc::clone(&parent_exe);
 
         spawn(move || {
             if let Ok(mut websocket) = accept(stream) {
@@ -43,11 +51,11 @@ pub fn serve(mut arguments: impl Iterator<Item = String>) -> Result<()> {
 
                 loop {
                     let Ok(message) = websocket.read() else {
-                        exit_websocket(&mut websocket);
+                        exit(&parent_exe)
                     };
 
                     if message.is_close() {
-                        exit_websocket(&mut websocket);
+                        exit(&parent_exe)
                     }
 
                     if message.is_text() {
@@ -64,13 +72,6 @@ pub fn serve(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn exit_websocket(websocket: &mut WebSocket<TcpStream>) -> ! {
-    if websocket.close(None).is_ok() {
-        websocket.flush().unwrap();
-    }
-    exit(0)
 }
 
 fn process_command(message: &str) -> Option<Message> {
@@ -97,8 +98,8 @@ fn process_command(message: &str) -> Option<Message> {
     })
 }
 
-pub fn init(mut arguments: impl Iterator<Item = String>) -> Result<()> {
-    let file_name = arguments.next().context("No file name provided")?;
+pub fn start(mut arguments: impl Iterator<Item = String>) -> Result<()> {
+    let temp_dir = arguments.next().context("No temp dir provided")?;
 
     let current_exe = current_exe()?;
     let port = TcpListener::bind(("127.0.0.1", 0))?
@@ -106,16 +107,52 @@ pub fn init(mut arguments: impl Iterator<Item = String>) -> Result<()> {
         .port()
         .to_string();
 
-    let file_name = Path::new(&file_name);
+    let temp_dir = Path::new(&temp_dir);
 
-    if let Some(parent) = file_name.parent() {
-        if !parent.exists() {
-            create_dir_all(parent)?;
+    if !temp_dir.exists() {
+        create_dir_all(temp_dir)?;
+    }
+
+    copy(&current_exe, temp_dir.join("lib.exe"))?;
+    write(temp_dir.join("port"), &port)?;
+    Command::new(&current_exe)
+        .arg("serve")
+        .arg(current_exe)
+        .arg(port)
+        .spawn()?;
+
+    Ok(())
+}
+
+pub fn delete(mut arguments: impl Iterator<Item = String>) -> Result<()> {
+    let path = arguments.next().context("No path provided")?;
+    let path = Path::new(&path);
+
+    if path.exists() {
+        if path.is_file() {
+            remove_file(path)?;
+        } else {
+            remove_dir_all(path)?;
         }
     }
 
-    write(file_name, &port)?;
-    Command::new(current_exe).arg("serve").arg(port).spawn()?;
-
     Ok(())
+}
+
+fn exit(parent_exe: &str) -> ! {
+    if let Ok(current_exe) = current_exe() {
+        let mut command = Command::new(parent_exe);
+
+        command.arg("delete");
+
+        if let Some(temp_dir) = current_exe.parent() {
+            command.arg(temp_dir);
+        } else {
+            command.arg(current_exe);
+        }
+
+        let _ = command.spawn();
+    }
+
+    process::exit(0)
 }
