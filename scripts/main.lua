@@ -75,7 +75,9 @@ function init(plugin)
 		id = "dmi_new_file",
 		title = "New DMI File",
 		group = "dmi_editor",
-		onclick = Editor.new_file,
+		onclick = function()
+			Editor.new_file(plugin.path)
+		end,
 	}
 
 	plugin:newMenuSeparator {

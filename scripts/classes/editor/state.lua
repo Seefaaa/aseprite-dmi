@@ -1,7 +1,8 @@
 --- Creates a new DMI file with the specified width and height.
 --- Uses native new file dialog to get the dimensions.
 --- If the file creation is successful, opens the DMI Editor with the newly created file.
-function Editor.new_file()
+--- @param plugin_path string Path where the extension is installed.
+function Editor.new_file(plugin_path)
 	local previous_sprite = app.sprite
 	if app.command.NewFile { width = 32, height = 32 } then
 		if previous_sprite ~= app.sprite then
@@ -10,12 +11,14 @@ function Editor.new_file()
 
 			app.command.CloseFile { ui = false }
 
-			lib:new_file("untitled", width, height, function(dmi, error)
-				if not error then
-					Editor.new(DIALOG_NAME, nil, dmi)
-				else
-					app.alert { title = DIALOG_NAME, text = { "Failed to create new DMI file", error } }
-				end
+			init_lib(plugin_path, function()
+				lib:new_file("untitled", width, height, function(dmi, error)
+					if not error then
+						Editor.new(DIALOG_NAME, nil, dmi)
+					else
+						app.alert { title = DIALOG_NAME, text = { "Failed to create new DMI file", error } }
+					end
+				end)
 			end)
 		end
 	end
