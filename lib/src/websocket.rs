@@ -3,7 +3,7 @@ use std::env::current_exe;
 use std::fs::{copy, create_dir_all, read_to_string, remove_dir_all, remove_file, write};
 use std::net::TcpListener;
 use std::path::Path;
-use std::process::{self, Command};
+use std::process::{exit, Command};
 use std::sync::{Arc, Mutex};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
@@ -29,7 +29,7 @@ pub fn serve(mut arguments: impl Iterator<Item = String>) -> Result<()> {
 
             let connections = connections.lock().unwrap();
             if *connections == 0 {
-                exit(&parent_exe);
+                remove_self(&parent_exe);
             }
         });
     }
@@ -47,12 +47,12 @@ pub fn serve(mut arguments: impl Iterator<Item = String>) -> Result<()> {
 
                 loop {
                     let Ok(message) = websocket.read() else {
-                        ws_close(&parent_exe, &connections);
+                        websocket_close(&connections, &parent_exe);
                         break;
                     };
 
                     if message.is_close() {
-                        ws_close(&parent_exe, &connections);
+                        websocket_close(&connections, &parent_exe);
                         break;
                     }
 
@@ -96,12 +96,12 @@ fn process_command(message: &str) -> Option<Message> {
     })
 }
 
-fn ws_close(parent_exe: &str, connections: &Arc<Mutex<u8>>) {
+fn websocket_close(connections: &Arc<Mutex<u8>>, parent_exe: &str) {
     let mut connections = connections.lock().unwrap();
     *connections -= 1;
 
     if *connections == 0 {
-        exit(parent_exe);
+        remove_self(parent_exe);
     }
 }
 
@@ -115,21 +115,22 @@ pub fn start(mut arguments: impl Iterator<Item = String>) -> Result<()> {
         .to_string();
 
     let temp_dir = Path::new(&temp_dir);
-    let port_path = temp_dir.join("port");
+    let port_file = temp_dir.join("port");
 
     if !temp_dir.exists() {
         create_dir_all(temp_dir)?;
-    } else if port_path.exists() {
-        let port = read_to_string(&port_path)?;
-        let port: u16 = port.parse()?;
+    } else if port_file.exists() {
+        let port: u16 = read_to_string(&port_file)?.parse()?;
         if TcpListener::bind(("127.0.0.1", port)).is_err() {
             return Ok(());
         }
     }
 
-    copy(&current_exe, temp_dir.join("lib.exe"))?;
-    write(&port_path, &port)?;
-    Command::new(&current_exe)
+    let child_exe = temp_dir.join(current_exe.file_name().unwrap());
+
+    copy(&current_exe, &child_exe)?;
+    write(&port_file, &port)?;
+    Command::new(child_exe)
         .arg("serve")
         .arg(current_exe)
         .arg(port)
@@ -153,7 +154,7 @@ pub fn delete(mut arguments: impl Iterator<Item = String>) -> Result<()> {
     Ok(())
 }
 
-fn exit(parent_exe: &str) -> ! {
+fn remove_self(parent_exe: &str) -> ! {
     if let Ok(current_exe) = current_exe() {
         let mut command = Command::new(parent_exe);
 
@@ -168,5 +169,5 @@ fn exit(parent_exe: &str) -> ! {
         let _ = command.spawn();
     }
 
-    process::exit(0)
+    exit(0)
 }
