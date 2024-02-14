@@ -149,17 +149,43 @@ end
 --- @param up_to_date boolean
 function update_popup(up_to_date)
 	if not up_to_date then
-		local button = app.alert {
+		local dialog = Dialog {
 			title = "Update Available",
-			text = {
-				"An update is available for the DMI Editor plugin.",
-				"Would you like to download it now?",
-				"Pressing \"OK\" will open the releases page in your browser."
-			},
-			buttons = { "&OK", "&Later" },
 		}
-		if button == 1 then
-			lib:open_repo("releases")
-		end
+
+		dialog:label {
+			focus = true,
+			text = "An update is available for DMI Editor.",
+		}
+
+		dialog:newrow()
+
+		dialog:label {
+			text = "Would you like to download it now?",
+		}
+
+		dialog:newrow()
+
+		dialog:label {
+			text = "Pressing \"OK\" will open the releases page in your browser.",
+		}
+
+		dialog:button {
+			focus = true,
+			text = "&OK",
+			onclick = function()
+				lib:open_repo("releases")
+				dialog:close()
+			end,
+		}
+
+		dialog:button {
+			text = "&Later",
+			onclick = function()
+				dialog:close()
+			end,
+		}
+
+		dialog:show()
 	end
 end

@@ -11,10 +11,18 @@ function Editor.new_file(plugin_path)
 
 			app.command.CloseFile { ui = false }
 
+			local check_update = false
+
+			if not lib then
+				check_update = true
+			end
+
 			init_lib(plugin_path, function()
 				lib:new_file("untitled", width, height, function(dmi, error)
 					if not error then
-						Editor.new(DIALOG_NAME, nil, dmi)
+						Editor.new(DIALOG_NAME, nil, dmi, check_update and function()
+							lib --[[@as Lib]]:check_update(update_popup)
+						end or nil)
 					else
 						app.alert { title = DIALOG_NAME, text = { "Failed to create new DMI file", error } }
 					end
