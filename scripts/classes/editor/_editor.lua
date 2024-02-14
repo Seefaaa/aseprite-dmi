@@ -387,6 +387,13 @@ function Editor:onbeforecommand(ev)
 				break
 			end
 		end
+	elseif ev.name == "AutocropSprite" then
+		for _, state_sprite in ipairs(self.open_sprites) do
+			if app.sprite == state_sprite.sprite then
+				ev.stopPropagation()
+				break
+			end
+		end
 	else
 		-- print(json.encode(ev))
 	end
