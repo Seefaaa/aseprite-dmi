@@ -8,7 +8,9 @@ You can download the ready-to-use version of this extension from the [Releases](
 
 ## Usage
 
-After downloading or building the project, you can add the extension to Aseprite by dragging and dropping it into Aseprite or by using `Add Extension` button in `Edit > Preferences > Extensions`. 
+After downloading or building the project, you can add the extension to Aseprite by dragging and dropping it into Aseprite or by using `Add Extension` button in `Edit > Preferences > Extensions`.
+
+You can now open DMI files in Aseprite just like other file formats.
 
 ## Building the Project
 
