@@ -87,7 +87,7 @@ function Editor:open_state(state)
 		end
 
 		app.frame = 1
-		app.command.ColorQuantization { ui = false }
+		app.command.ColorQuantization { ui = false, withAlpha = false }
 	end)
 
 	sprite:saveAs(app.fs.joinPath(self.dmi.temp, state.frame_key .. ".ase"))
@@ -172,8 +172,6 @@ function Editor:state_properties(state)
 		label = "Rewind:",
 		selected = state.rewind,
 	}
-
-	dialog:separator()
 
 	dialog:button {
 		text = "&OK",
@@ -347,6 +345,7 @@ function Editor:paste_state()
 
 	lib:paste_state(self.dmi, function(state, error)
 		if not error then
+			self.modified = true
 			table.insert(self.dmi.states, state)
 			self.image_cache:load_state(self.dmi, state --[[@as State]])
 			self:repaint_states()
@@ -369,6 +368,7 @@ function Editor:sprite_size_dialog()
 
 	dialog:number {
 		id = "sprite_width",
+		focus = true,
 		label = "Width:",
 		text = tostring(original_width),
 		decimals = 0,
@@ -499,8 +499,22 @@ function Editor:sprite_size_dialog()
 	}
 
 	dialog:button {
+		focus = true,
 		text = "&OK",
 		onclick = function()
+			local width = dialog.data.sprite_width
+			local height = dialog.data.sprite_height
+			local method = dialog.data.sprite_method
+
+			if not tonumber(width) and not tonumber(height) then
+				return
+			end
+
+			if width < 3 or height < 3 then
+				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels", buttons = { "&OK" } }
+				return
+			end
+
 			local alert = app.alert {
 				title = "Warning",
 				text = "Resizing the sprite will re-open all open states without saving. Continue?",
@@ -512,10 +526,6 @@ function Editor:sprite_size_dialog()
 			end
 
 			dialog:close()
-
-			local width = dialog.data.sprite_width
-			local height = dialog.data.sprite_height
-			local method = dialog.data.sprite_method
 
 			if method == "Nearest-neighbor" then
 				method = "nearest"

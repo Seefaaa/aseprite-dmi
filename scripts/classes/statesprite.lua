@@ -122,3 +122,65 @@ function StateSprite:save()
 
 	return true
 end
+
+--- Displays a warning dialog asking the user to save changes to the sprite before closing.
+--- @return 0|1|2 result 0 if the user cancels the operation, 1 if the user saves the file, 2 if the user doesn't save the file.
+function StateSprite:save_warning()
+	local result = 0
+
+	local dialog = Dialog {
+		title = "Warning",
+	}
+
+	dialog:label {
+		text = "Save changes to the sprite",
+		focus = true
+	}
+
+	dialog:newrow()
+
+	dialog:label {
+		text = '"' .. self.state.name ..'" state of',
+	}
+
+	dialog:newrow()
+
+	dialog:label {
+		text = '"' .. file_name(self.editor:path()) .. '" before closing?',
+	}
+
+	dialog:canvas { height = 1 }
+
+	dialog:button {
+		text = "&Save",
+		focus = true,
+		onclick = function()
+			if self:save() then
+				self.sprite:saveAs(self.sprite.filename)
+				result = 1
+				dialog:close()
+			end
+		end
+	}
+
+	dialog:button {
+		text = "Do&n't Save",
+		onclick = function()
+			result = 2
+			dialog:close()
+		end
+	}
+
+	dialog:button {
+		text = "&Cancel",
+		onclick = function()
+			dialog:close()
+		end
+	}
+
+	self.editor.switch_tab(self.sprite)
+
+	dialog:show()
+
+	return result
+end

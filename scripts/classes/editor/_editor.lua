@@ -174,14 +174,22 @@ function Editor:close(event, force)
 		return true
 	end
 
-	if self.modified and not force then
+	if self:is_modified() and not force then
 		if event then
 			local bounds = self.dialog.bounds
 			self:new_dialog(self.title)
 			self.dialog:show { wait = false, bounds = bounds }
 		end
 
-		if self:save_warning() == 0 then
+		for _, state_sprite in ipairs(self.open_sprites) do
+			if state_sprite.sprite.isModified then
+				if state_sprite:save_warning() == 0 then
+					return false
+				end
+			end
+		end
+
+		if self.modified and self:save_warning() == 0 then
 			return false
 		end
 	end
@@ -301,7 +309,7 @@ function Editor:save(on_save, bounds)
 
 	dialog:label {
 		focus = true,
-		text = '"' .. dialog.data.save_dmi_file .. '"'
+		text = dialog.data.save_dmi_file
 	}
 
 	dialog:canvas { height = 1, onpaint = function(ev) context = ev.context end }
@@ -436,4 +444,15 @@ function Editor.switch_tab(sprite)
 		end
 	end)
 	app.command.GotoNextTab()
+end
+
+--- Checks if the DMI file has been modified.
+--- @return boolean modified Whether the DMI file has been modified.
+function Editor:is_modified()
+	for _, state_sprite in ipairs(self.open_sprites) do
+		if state_sprite.sprite.isModified then
+			return true
+		end
+	end
+	return self.modified
 end
