@@ -7,7 +7,7 @@ IF %ERRORLEVEL% EQU 0 (
 	exit /b %ERRORLEVEL%
 )
 
-SET EXTENSION_NAME=dmi-editor
+SET EXTENSION_NAME=aseprite-dmi
 SET TARGET=debug
 SET SKIP=0
 

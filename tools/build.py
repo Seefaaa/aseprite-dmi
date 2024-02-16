@@ -3,7 +3,7 @@ import shutil
 import subprocess
 import zipfile
 
-EXTENSION_NAME = "dmi-editor"
+EXTENSION_NAME = "aseprite-dmi"
 TARGET = "debug"
 SKIP = False
 
