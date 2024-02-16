@@ -11,6 +11,11 @@ function Editor.new_file(plugin_path)
 
 			app.command.CloseFile { ui = false }
 
+			if width < 3 or height < 3 then
+				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels", buttons = { "&OK" } }
+				return
+			end
+
 			local check_update = false
 
 			if not lib then
