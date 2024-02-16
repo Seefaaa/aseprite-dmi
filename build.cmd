@@ -1,4 +1,11 @@
 @echo off
+cd %~dp0
+
+python --version 1>nul 2>nul
+IF %ERRORLEVEL% EQU 0 (
+	python tools\build.py %*
+	exit /b %ERRORLEVEL%
+)
 
 SET EXTENSION_NAME=dmi-editor
 SET TARGET=debug
@@ -13,10 +20,8 @@ IF "%~1"=="--ci" (
 	SET SKIP=1
 )
 
-cd %~dp0
-
-IF NOT %SKIP% NEQ 0 (
-	rustc --version
+IF %SKIP% EQU 0 (
+	rustc --version 1>nul
 	IF %ERRORLEVEL% NEQ 0 (
 		echo "Rust is not installed."
 		exit /b 1
