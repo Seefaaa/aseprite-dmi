@@ -358,7 +358,8 @@ function Editor:paste_state()
 	end)
 end
 
-function Editor:sprite_size_dialog()
+--- Shows a dialog to resize the DMI file.
+function Editor:resize()
 	if not self.dmi then return end
 
 	local original_width = math.floor(self.dmi.width)
@@ -366,7 +367,7 @@ function Editor:sprite_size_dialog()
 	local ratio = original_width / original_height
 
 	local dialog = Dialog {
-		title = "Sprite Size"
+		title = "Resize DMI"
 	}
 
 	dialog:separator { text = "Pixels:" }
@@ -522,7 +523,10 @@ function Editor:sprite_size_dialog()
 
 			local alert = app.alert {
 				title = "Warning",
-				text = "Resizing the sprite will re-open all open states without saving. Continue?",
+				text = {
+					"Resizing the DMI will re-open all open states",
+					"without saving and this is irreversible. Continue?"
+				},
 				buttons = { "&OK", "&Cancel" }
 			}
 

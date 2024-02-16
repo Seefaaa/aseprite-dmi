@@ -61,6 +61,17 @@ function init(plugin)
 		end
 	end)
 
+	local is_state_sprite = function ()
+		for _, editor in ipairs(open_editors) do
+			for _, sprite in ipairs(editor.open_sprites) do
+				if app.sprite == sprite.sprite then
+					return sprite
+				end
+			end
+		end
+		return nil
+	end
+
 	plugin:newMenuSeparator {
 		group = "file_import",
 	}
@@ -77,6 +88,25 @@ function init(plugin)
 		group = "dmi_editor",
 		onclick = function()
 			Editor.new_file(plugin.path)
+		end,
+	}
+
+	plugin:newMenuSeparator {
+		group = "dmi_editor",
+	}
+
+	plugin:newCommand {
+		id = "dmi_resize",
+		title = "Resize",
+		group = "dmi_editor",
+		onclick = function()
+			local state_sprite = is_state_sprite()
+			if state_sprite then
+				state_sprite.editor:resize()
+			end
+		end,
+		onenabled = function()
+			return is_state_sprite() and true or false
 		end,
 	}
 
