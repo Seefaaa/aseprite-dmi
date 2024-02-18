@@ -1,9 +1,12 @@
-use std::{cmp::Ordering, ffi::OsStr, io::BufWriter, path::Path, time::Duration};
-
 use anyhow::Context as _;
 use base64::{engine::general_purpose, Engine as _};
 use image::DynamicImage;
 use png::{Compression, Encoder};
+use std::cmp::Ordering;
+use std::ffi::OsStr;
+use std::io::BufWriter;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -36,7 +39,10 @@ pub fn image_to_base64(image: &DynamicImage) -> Result<String, ToBase64Error> {
     ))
 }
 
-pub fn find_dir<P: AsRef<OsStr>>(path: P) -> Option<String> {
+pub fn find_directory<P>(path: P) -> PathBuf
+where
+    P: AsRef<OsStr>,
+{
     let mut path = Path::new(&path).to_path_buf();
     let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
 
@@ -49,7 +55,7 @@ pub fn find_dir<P: AsRef<OsStr>>(path: P) -> Option<String> {
         }
     }
 
-    path.to_str().map(|s| s.to_string())
+    path
 }
 
 pub fn optimal_size(frames: usize, width: u32, height: u32) -> (f32, u32, u32) {
@@ -66,59 +72,10 @@ pub fn optimal_size(frames: usize, width: u32, height: u32) -> (f32, u32, u32) {
     (sqrt, width, height)
 }
 
-pub fn split_args(string: String) -> Vec<String> {
-    let input_string = string;
-
-    let mut parts_quotes: Vec<String> = Vec::new();
-    let mut inside_quotes = false;
-    let mut inside_single_quotes = false;
-    let mut current_part = String::new();
-
-    for char in input_string.chars() {
-        match char {
-            '"' => {
-                if !inside_single_quotes {
-                    inside_quotes = !inside_quotes;
-                    if !inside_quotes {
-                        parts_quotes.push(current_part.clone());
-                        current_part.clear();
-                    }
-                } else {
-                    current_part.push(char);
-                }
-            }
-            '\'' => {
-                inside_single_quotes = !inside_single_quotes;
-                if !inside_single_quotes {
-                    parts_quotes.push(current_part.clone());
-                    current_part.clear();
-                }
-            }
-            ' ' => {
-                if !inside_quotes && !inside_single_quotes && !current_part.is_empty() {
-                    parts_quotes.push(current_part.clone());
-                    current_part.clear();
-                } else if inside_quotes || inside_single_quotes && !current_part.is_empty() {
-                    current_part.push(char);
-                }
-            }
-            _ => {
-                current_part.push(char);
-            }
-        }
-    }
-
-    if !current_part.is_empty() {
-        parts_quotes.push(current_part);
-    }
-
-    parts_quotes
-}
-
-pub fn check_latest_release() -> anyhow::Result<bool> {
+pub fn check_latest_release() -> Result<bool, Box<dyn std::error::Error>> {
     let current_version = env!("CARGO_PKG_VERSION");
-
     let repository = env!("CARGO_PKG_REPOSITORY");
+
     let repository = repository.split('/').collect::<Vec<_>>();
     let repository = format!("{}/{}", repository[3], repository[4]);
 

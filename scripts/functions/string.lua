@@ -29,3 +29,33 @@ function string.split(str, sep)
 	end
 	return t
 end
+
+--- Splits a string into lines, ensuring that each line does not exceed a maximum length.
+--- @param str string The string to split.
+--- @param max_length number The maximum length of each line.
+function string.split_lines(str, max_length)
+	local result = {}
+	for line in str:gmatch("[^\n]+") do
+			local line_length = #line
+			if line_length > max_length then
+					local words = {}
+					for word in line:gmatch("%S+") do
+							table.insert(words, word)
+					end
+					local new_line = ""
+					for _, word in ipairs(words) do
+							if #new_line + #word > max_length then
+									table.insert(result, new_line)
+									new_line = ""
+							end
+							new_line = new_line .. word .. " "
+					end
+					if #new_line > 0 then
+							table.insert(result, new_line)
+					end
+			else
+					table.insert(result, line)
+			end
+	end
+	return result
+end

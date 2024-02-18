@@ -23,14 +23,6 @@ You can now open DMI files in Aseprite just like other file formats.
 
 To build the project, execute the `build.cmd` file or run `build` or `build --release` in the command line.
 
-## Trustworthiness
-
-This project is open source, which means that the source code is freely available for anyone to review and contribute to. This transparency allows the community to verify that the project does not contain any malicious code.
-
-Additionally, the project's releases are built using a continuous integration (CI) pipeline, which ensures that the code is automatically compiled and tested before being released. This further reduces the risk of introducing any harmful code.
-
-It's important to note that any antivirus warnings or false positives should be taken with caution. Sometimes, antivirus software may flag legitimate software as potentially harmful due to various reasons, such as unfamiliar code patterns or behavior. If you encounter any antivirus warnings, you can safely ignore them and trust the project's open source nature and CI pipeline for its reliability and security.
-
 ## Contact
 
 For any questions or further discussion, feel free to reach out to me on Discord at `Seefaaa`.

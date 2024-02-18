@@ -205,7 +205,7 @@ function Editor:close(event, force)
 	end
 
 	if self.dmi then
-		lib:remove_dir(self.dmi.temp)
+		libdmi.remove_dir(self.dmi.temp, false)
 	end
 
 	for _, state_sprite in ipairs(self.open_sprites) do
@@ -239,7 +239,7 @@ end
 --- @param complete? fun() The callback function to be called when the file is opened.
 function Editor:open_file(dmi, complete)
 	if self.dmi then
-		lib:remove_dir(self.dmi.temp)
+		libdmi.remove_dir(self.dmi.temp, false)
 	end
 
 	for _, state_sprite in ipairs(self.open_sprites) do
@@ -257,17 +257,22 @@ function Editor:open_file(dmi, complete)
 	self:repaint()
 
 	if not dmi then
-		lib:open_file(self.open_path, function(dmi)
+		local dmi, error = libdmi.open_file(self.open_path, TEMP_DIR)
+		if not error then
 			self.dmi = dmi --[[@as Dmi]]
-			self.loading = false
 			self.image_cache:load_previews(self.dmi)
-			self:repaint_states()
-			if complete then
-				complete()
-			end
-		end)
+		else
+			app.alert { title = "Error", text = { "Failed to open the DMI file", error } }
+		end
+
+		self.loading = false
+		self:repaint_states()
+
+		if complete then
+			complete()
+		end
 	else
-		self.dmi = dmi --[[@as Dmi]]
+		self.dmi = dmi
 		self.loading = false
 		self.image_cache:load_previews(self.dmi)
 		self:repaint_states()
@@ -322,13 +327,10 @@ function Editor:save(on_save, bounds)
 				on_save()
 			end
 			dialog:close()
-			lib:save_file(self.dmi, dialog.data.save_dmi_file, function(success, error)
-				if not success then
-					app.alert { title = "Save File", text = { "Failed to save", error } }
-				else
-					self.modified = false
-				end
-			end)
+			local _, error = libdmi.save_file(self.dmi, dialog.data.save_dmi_file)
+			if not error then
+				self.modified = false
+			end
 		end
 	}
 
@@ -379,8 +381,6 @@ function Editor:onbeforecommand(ev)
 				break
 			end
 		end
-	else
-		-- print(json.encode(ev))
 	end
 end
 
@@ -400,27 +400,26 @@ function Editor:onaftercommand(ev)
 	end
 end
 
---- Removes unused statesprites from the editor.
-function Editor:remove_nil_statesprites()
-	for index, state_sprite in ipairs(self.open_sprites) do
-		if not state_sprite.sprite or not state_sprite.state then
-			table.remove(self.open_sprites, index)
+--- Removes unused statesprites from the open_sprites.
+function Editor:gc_open_sprites()
+	local open_sprites = {} --[[@type StateSprite[] ]]
+	for _, state_sprite in ipairs(self.open_sprites) do
+		if Editor.is_sprite_open(state_sprite.sprite) then
+			table.insert(open_sprites, state_sprite)
 		end
 	end
+	self.open_sprites = open_sprites
 end
 
 --- Switches the tab to the sprite containing the state.
 --- @param sprite Sprite The sprite to be opened.
 function Editor.switch_tab(sprite)
-	local listener = nil
-	listener = app.events:on("sitechange", function()
-		if app.sprite == sprite then
-			app.events:off(listener --[[@as number]])
-		else
-			app.command.GotoNextTab()
-		end
-	end)
-	app.command.GotoNextTab()
+	local tries = 0
+	local max_tries = #app.sprites + 1
+	while app.sprite ~= sprite and tries <= max_tries do
+		tries = tries + 1
+		app.command.GotoNextTab()
+	end
 end
 
 --- Checks if the DMI file has been modified.
@@ -432,4 +431,15 @@ function Editor:is_modified()
 		end
 	end
 	return self.modified
+end
+
+--- Checks if the sprite is open in the Aseprite editor.
+--- @param sprite Sprite The sprite to be checked.
+function Editor.is_sprite_open(sprite)
+	for _, sprite_ in ipairs(app.sprites) do
+		if sprite == sprite_ then
+			return true
+		end
+	end
+	return false
 end

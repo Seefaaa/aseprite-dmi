@@ -132,22 +132,19 @@ function StateSprite:save_warning()
 		title = "Warning",
 	}
 
-	dialog:label {
-		text = "Save changes to the sprite",
-		focus = true
-	}
+	local unnamed = false
 
-	dialog:newrow()
+	if #self.state.name == 0 then
+		unnamed = true
+	end
 
-	dialog:label {
-		text = '"' .. self.state.name ..'" state of',
-	}
+	local text = "Save changes to the sprite " .. (not unnamed and ('"' .. self.state.name .. '" ') or '') .. 'state of "' .. file_name(self.editor:path()) .. '" before closing?'
+	local lines = string.split_lines(text, 36)
 
-	dialog:newrow()
-
-	dialog:label {
-		text = '"' .. file_name(self.editor:path()) .. '" before closing?',
-	}
+	for i, line in ipairs(lines) do
+		dialog:newrow()
+		dialog:label { text = line, focus = i == 1 }
+	end
 
 	dialog:canvas { height = 1 }
 

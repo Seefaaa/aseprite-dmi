@@ -8,13 +8,16 @@ local after_listener = nil
 --- @type number|nil
 local before_listener = nil
 
+--- Aseprite is exiting.
+local exiting = false
+
 --- Open editors.
 --- @type Editor[]
 open_editors = {}
 
---- Lib instance.
---- @type Lib|nil
-lib = nil
+--- Lib module.
+--- @type LibDmi
+libdmi = nil
 
 --- Initializes the plugin. Called when the plugin is loaded.
 --- @param plugin Plugin The plugin object.
@@ -32,17 +35,17 @@ function init(plugin)
 			if app.sprite and app.sprite.filename:ends_with(".dmi") then
 				local filename = app.sprite.filename
 				app.command.CloseFile { ui = false }
-
-				if not lib then
-					init_lib(plugin.path, function()
-						Editor.new(DIALOG_NAME, filename, nil, function()
-							lib --[[@as Lib]]:check_update(update_popup)
-						end)
-					end)
-				else
-					Editor.new(DIALOG_NAME, filename)
+				local check_update_ = false
+				if not libdmi then
+					loadlib(plugin.path)
+					check_update_ = true
 				end
+				Editor.new(DIALOG_NAME, filename, nil, check_update_ and function()
+					check_update()
+				end or nil)
 			end
+		elseif ev.name == "Exit" then
+			exiting = true
 		end
 	end)
 
@@ -61,7 +64,7 @@ function init(plugin)
 		end
 	end)
 
-	local is_state_sprite = function ()
+	local is_state_sprite = function()
 		for _, editor in ipairs(open_editors) do
 			for _, sprite in ipairs(editor.open_sprites) do
 				if app.sprite == sprite.sprite then
@@ -119,9 +122,10 @@ function init(plugin)
 		title = "Report Issue",
 		group = "dmi_editor",
 		onclick = function()
-			init_lib(plugin.path, function()
-				lib:open_repo("issues")
-			end)
+			if not libdmi then
+				loadlib(plugin.path)
+			end
+			libdmi.open_repo("issues")
 		end,
 	}
 
@@ -130,9 +134,10 @@ function init(plugin)
 		title = "Releases",
 		group = "dmi_editor",
 		onclick = function()
-			init_lib(plugin.path, function()
-				lib:open_repo("releases")
-			end)
+			if not libdmi then
+				loadlib(plugin.path)
+			end
+			libdmi.open_repo("releases")
 		end,
 	}
 end
@@ -140,6 +145,10 @@ end
 --- Exits the plugin. Called when the plugin is removed or Aseprite is closed.
 --- @param plugin Plugin The plugin object.
 function exit(plugin)
+	if not exiting and libdmi then
+		print("To uninstall the extension, re-open the Aseprite without using the extension and try again.\nThis happens beacuse once the library (dll) is loaded, it cannot be unloaded.\n")
+		return
+	end
 	if after_listener then
 		app.events:off(after_listener)
 		after_listener = nil
@@ -154,68 +163,69 @@ function exit(plugin)
 			editor:close(false, true)
 		end
 	end
-	if lib then
-		lib.websocket:close()
-		lib = nil
+	if libdmi then
+		libdmi.remove_dir(TEMP_DIR, true)
+		libdmi = nil
 	end
 end
 
---- Initializes the lib for first time and calls the callback when it's done.
---- If the lib is already initialized, it will call the callback immediately.
---- @param path string lib path
---- @param callback fun() callback
-function init_lib(path, callback)
-	if not lib then
-		lib = Lib.new(app.fs.joinPath(path, LIB_BIN), app.fs.joinPath(app.fs.tempPath, TEMP_NAME))
-		lib:once("open", function()
-			callback()
-		end)
-	else
-		callback()
+--- Loads the DMI library.
+--- @param plugin_path string Path where the extension is installed.
+function loadlib(plugin_path)
+	if not libdmi then
+		package.loadlib(app.fs.joinPath(plugin_path, LUA_LIB), "")
+		libdmi = package.loadlib(app.fs.joinPath(plugin_path, DMI_LIB), "luaopen_dmi_module")()
+	end
+end
+
+--- Checks for updates.
+function check_update()
+	local available = libdmi.check_update()
+	if available then
+		update_popup()
 	end
 end
 
 --- Shows the update alert popup.
---- @param up_to_date boolean
-function update_popup(up_to_date)
-	if not up_to_date then
-		local dialog = Dialog {
-			title = "Update Available",
-		}
+function update_popup()
+	local dialog = Dialog {
+		title = "Update Available",
+	}
 
-		dialog:label {
-			focus = true,
-			text = "An update is available for DMI Editor.",
-		}
+	dialog:label {
+		focus = true,
+		text = "An update is available for DMI Editor.",
+	}
 
-		dialog:newrow()
+	dialog:newrow()
 
-		dialog:label {
-			text = "Would you like to download it now?",
-		}
+	dialog:label {
+		text = "Would you like to download it now?",
+	}
 
-		dialog:newrow()
+	dialog:newrow()
 
-		dialog:label {
-			text = "Pressing \"OK\" will open the releases page in your browser.",
-		}
+	dialog:label {
+		text = "Pressing \"OK\" will open the releases page in your browser.",
+	}
 
-		dialog:button {
-			focus = true,
-			text = "&OK",
-			onclick = function()
-				lib:open_repo("releases")
-				dialog:close()
-			end,
-		}
+	dialog:canvas { height = 1 }
 
-		dialog:button {
-			text = "&Later",
-			onclick = function()
-				dialog:close()
-			end,
-		}
+	dialog:button {
+		focus = true,
+		text = "&OK",
+		onclick = function()
+			libdmi.open_repo("issues")
+			dialog:close()
+		end,
+	}
 
-		dialog:show()
-	end
+	dialog:button {
+		text = "&Later",
+		onclick = function()
+			dialog:close()
+		end,
+	}
+
+	dialog:show()
 end

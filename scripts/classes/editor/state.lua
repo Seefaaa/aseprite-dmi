@@ -16,23 +16,22 @@ function Editor.new_file(plugin_path)
 				return
 			end
 
-			local check_update = false
+			local check_update_ = false
 
-			if not lib then
-				check_update = true
+			if not libdmi then
+				loadlib(plugin_path)
+				check_update_ = true
 			end
 
-			init_lib(plugin_path, function()
-				lib:new_file("untitled", width, height, function(dmi, error)
-					if not error then
-						Editor.new(DIALOG_NAME, nil, dmi, check_update and function()
-							lib --[[@as Lib]]:check_update(update_popup)
-						end or nil)
-					else
-						app.alert { title = DIALOG_NAME, text = { "Failed to create new DMI file", error } }
-					end
-				end)
-			end)
+			local dmi, error = libdmi.new_file("untitled", width, height, TEMP_DIR)
+			if not error then
+				Editor.new(DIALOG_NAME, nil, dmi, check_update_ and function()
+					check_update()
+				end or nil)
+			else
+				app.alert { title = "Error", text = { "Failed to create new file", error } }
+				check_update()
+			end
 		end
 	end
 end
@@ -92,16 +91,44 @@ function Editor:open_state(state)
 		end
 
 		app.frame = 1
-		app.command.ColorQuantization { ui = false, withAlpha = false }
+
+		local is_empty = true
+		for _, cel in ipairs(sprite.cels) do
+			if not cel.image:isEmpty() then
+				is_empty = false
+				app.command.ColorQuantization { ui = false, withAlpha = false }
+
+				local palette = sprite.palettes[1]
+				if palette:getColor(0).alpha == 0 then
+					if #palette > 1 then
+						local colors = {}
+						for i = 1, #palette - 1, 1 do
+							local color = palette:getColor(i)
+							table.insert(colors, color)
+						end
+						local new_palette = Palette(#colors)
+						for i, color in ipairs(colors) do
+							new_palette:setColor(i - 1, color)
+						end
+						sprite:setPalette(new_palette)
+					else
+						app.command.LoadPalette { ui = false, preset = "default" }
+					end
+				end
+				break
+			end
+		end
+
+		if is_empty then
+			app.command.LoadPalette { ui = false, preset = "default" }
+		end
 	end)
 
 	sprite:saveAs(app.fs.joinPath(self.dmi.temp, state.frame_key .. ".ase"))
 	app.command.FitScreen()
 
-	-- app.command.SaveFile { ui = false, filename = app.fs.joinPath(self.dmi.temp, state.frame_key .. ".ase") }
-
+	self:gc_open_sprites()
 	table.insert(self.open_sprites, StateSprite.new(self, self.dmi, state, sprite, transparentColor))
-	self:remove_nil_statesprites()
 end
 
 --- Opens a context menu for a state.
@@ -162,7 +189,7 @@ function Editor:state_properties(state)
 	dialog:number {
 		id = "state_loop",
 		label = "Loop:",
-		text = tostring(math.floor(state.loop_)),
+		text = tostring(math.floor(state.loop)),
 		decimals = 0,
 	}
 
@@ -195,7 +222,7 @@ function Editor:state_properties(state)
 			if loop then
 				loop = math.floor(loop)
 				if loop >= 0 then
-					state.loop_ = loop
+					state.loop = loop
 				end
 			end
 			state.movement = dialog.data.state_movement or false
@@ -300,16 +327,16 @@ end
 function Editor:new_state()
 	if not self.dmi then return end
 
-	lib:new_state(self.dmi, function(state, error)
-		if not error then
-			self.modified = true
-			table.insert(self.dmi.states, state)
-			self.image_cache:load_state(self.dmi, state --[[@as State]])
-			self:repaint_states()
-		else
-			app.alert { title = self.title, text = { "Failed to create new state", error } }
-		end
-	end)
+	local state, error = libdmi.new_state(self.dmi.width, self.dmi.height, self.dmi.temp)
+	if not error then
+		self.modified = true
+		table.insert(self.dmi.states, state)
+		self.image_cache:load_state(self.dmi, state --[[@as State]])
+		self:repaint_states()
+		self:gc_open_sprites()
+	else
+		app.alert { title = "Error", text = { "Failed to create new state", error } }
+	end
 end
 
 --- Removes a state from the DMI file.
@@ -326,6 +353,7 @@ function Editor:remove_state(state)
 	table.remove(self.dmi.states, table.index_of(self.dmi.states, state))
 	self.image_cache:remove(state.frame_key)
 	self:repaint_states()
+	self:gc_open_sprites()
 end
 
 --- Copies a state to the clipboard.
@@ -341,21 +369,21 @@ function Editor:copy_state(state)
 		end
 	end
 
-	lib:copy_state(self.dmi, state)
+	libdmi.copy_state(state, self.dmi.temp)
 end
 
 --- Creates a new state in the DMI file copied from the clipboard.
 function Editor:paste_state()
 	if not self.dmi then return end
 
-	lib:paste_state(self.dmi, function(state, error)
-		if not error then
-			self.modified = true
-			table.insert(self.dmi.states, state)
-			self.image_cache:load_state(self.dmi, state --[[@as State]])
-			self:repaint_states()
-		end
-	end)
+	local state = libdmi.paste_state(self.dmi.width, self.dmi.height, self.dmi.temp)
+	if state then
+		self.modified = true
+		table.insert(self.dmi.states, state)
+		self.image_cache:load_state(self.dmi, state)
+		self:repaint_states()
+		self:gc_open_sprites()
+	end
 end
 
 --- Shows a dialog to resize the DMI file.
@@ -548,29 +576,29 @@ function Editor:resize()
 				method = "lanczos3"
 			end
 
-			lib:resize(self.dmi, width, height, method, function(success, error)
-				if success then
-					local open_states = {} --[[@type State[] ]]
-					for _, state_sprite in ipairs(self.open_sprites) do
-						if state_sprite.sprite then
-							state_sprite.sprite:close()
-							table.insert(open_states, state_sprite.state)
-						end
-					end
+			local _, error = libdmi.resize(self.dmi, width, height, method)
 
-					self.open_sprites = {}
-					self.dmi.width = width
-					self.dmi.height = height
-					self.image_cache:load_previews(self.dmi)
-					self:repaint_states()
-
-					for _, state in ipairs(open_states) do
-						self:open_state(state)
+			if not error then
+				local open_states = {} --[[@type State[] ]]
+				for _, state_sprite in ipairs(self.open_sprites) do
+					if state_sprite.sprite then
+						state_sprite.sprite:close()
+						table.insert(open_states, state_sprite.state)
 					end
-				else
-					app.alert { title = self.title, text = { "Failed to resize sprite", error } }
 				end
-			end)
+
+				self.open_sprites = {}
+				self.dmi.width = width
+				self.dmi.height = height
+				self.image_cache:load_previews(self.dmi)
+				self:repaint_states()
+
+				for _, state in ipairs(open_states) do
+					self:open_state(state)
+				end
+			else
+				app.alert { title = "Error", text = { "Failed to resize", error } }
+			end
 		end
 	}
 

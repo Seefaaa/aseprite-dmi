@@ -432,7 +432,7 @@ end
 --- @field saveCopyAs function
 --- @field close function
 --- @field loadPalette function
---- @field setPalette function
+--- @field setPalette fun(self: Sprite, palette: Palette)
 --- @field assignColorSpace function
 --- @field convertColorSpace function
 --- @field newLayer fun(self: Sprite): Layer
@@ -819,3 +819,33 @@ end
 ---| 'PING'
 ---| 'PONG'
 ---| 'FRAGMENT'
+
+--- @class LibDmi: table
+--- @field new_file fun(name: string, width: number, height: number, temp: string): Dmi|nil, string|nil
+--- @field open_file fun(path: string, temp: string): Dmi|nil, string|nil
+--- @field save_file fun(dmi: Dmi, filename: string): nil, string|nil
+--- @field new_state fun(width: number, height: number, temp: string): State|nil, string|nil
+--- @field copy_state fun(state: State, temp: string): nil, string|nil
+--- @field paste_state fun(width: number, height: number, temp: string): State|nil, string|nil
+--- @field resize fun(dmi: Dmi, width: number, height: number, medhod: string): nil, string|nil
+--- @field remove_dir fun(path: string, soft: boolean): nil, string|nil
+--- @field check_update fun(): boolean Return true if there is an update available.
+--- @field open_repo fun(path?: string): nil, string|nil
+
+--- @class Dmi: table
+--- @field name string The name of the DMI file.
+--- @field width number The width of the DMI file.
+--- @field height number The height of the DMI file.
+--- @field states (State)[] The states of the DMI file.
+--- @field temp string The temporary directory where images of states are stored.
+
+--- @class State: table
+--- @field name string The name of the state.
+--- @field dirs 1|4|8 The number of directions in the state.
+--- @field frame_key string The frame key of the state used in the temporary directory.
+--- @field frame_count number The number of frames in the state.
+--- @field delays (number)[] The delays of the state.
+--- @field loop number How many times the state loops.
+--- @field rewind boolean Whether the state rewinds or not.
+--- @field movement boolean Whether the state is a movement state or not.
+--- @field hotspots (string)[] The hotspots of the state.

@@ -4,6 +4,7 @@ import subprocess
 import zipfile
 
 EXTENSION_NAME = "aseprite-dmi"
+LIBRARY_NAME = "dmi"
 TARGET = "debug"
 SKIP = False
 
@@ -45,14 +46,16 @@ if not SKIP:
 os.chdir(working_dir)
 
 if sys.platform.startswith('win'):
-    binary_extension = ".exe"
+    library_extension = ".dll"
+    library_prefix = ""
 else:
-    binary_extension = ""
+    library_extension = ".so"
+    library_prefix = "lib"
 
-binary_source = os.path.join("lib", "target", TARGET, f"lib{binary_extension}")
+library_source = os.path.join("lib", "target", TARGET, f"{LIBRARY_NAME}{library_extension}")
 
-if not os.path.exists(binary_source):
-    print("Error: lib binary was not built. Please check for errors.")
+if not os.path.exists(library_source):
+    print("Error: lib was not built. Please check for errors.")
     sys.exit(1)
 
 dist_dir = os.path.join(working_dir, "dist")
@@ -66,8 +69,8 @@ os.makedirs(unzipped_dir)
 
 shutil.copy("package.json", unzipped_dir)
 shutil.copy("LICENSE", unzipped_dir)
-
-shutil.copy(binary_source, unzipped_dir)
+shutil.copy(f"{library_prefix}lua54{library_extension}", unzipped_dir)
+shutil.copy(library_source, unzipped_dir)
 
 shutil.copytree(os.path.join("scripts"), os.path.join(unzipped_dir, "scripts"))
 

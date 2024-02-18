@@ -5,12 +5,12 @@ use png::{Compression, Decoder, Encoder};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::ffi::OsStr;
-use std::fs::{self, File};
+use std::fs::{create_dir_all, remove_dir_all, File};
 use std::io::{BufWriter, Cursor, Read as _, Write as _};
 use std::path::Path;
 use thiserror::Error;
 
-use crate::utils::{find_dir, image_to_base64, optimal_size};
+use crate::utils::{find_directory, image_to_base64, optimal_size};
 
 const DMI_VERSION: &str = "4.0";
 
@@ -31,7 +31,7 @@ impl Dmi {
             states: Vec::new(),
         }
     }
-    pub fn with_metadata(&mut self, metadata: String) -> DmiResult<()> {
+    pub fn set_metadata(&mut self, metadata: String) -> DmiResult<()> {
         let mut lines = metadata.lines();
 
         if lines.next().ok_or(DmiError::MissingMetadataHeader)? != "# BEGIN DMI" {
@@ -111,7 +111,7 @@ impl Dmi {
 
         Ok(())
     }
-    pub fn metadata(&self) -> String {
+    pub fn get_metadata(&self) -> String {
         let mut string = String::default();
         string.push_str("# BEGIN DMI\n");
         string.push_str(format!("version = {}\n", DMI_VERSION).as_str());
@@ -148,7 +148,10 @@ impl Dmi {
         string.push_str("# END DMI\n");
         string
     }
-    pub fn open<P: AsRef<Path>>(path: P) -> DmiResult<Self> {
+    pub fn open<P>(path: P) -> DmiResult<Self>
+    where
+        P: AsRef<Path>,
+    {
         let decoder = Decoder::new(File::open(&path)?);
         let reader = decoder.read_info()?;
         let chunk = reader
@@ -164,7 +167,7 @@ impl Dmi {
             32,
         );
 
-        dmi.with_metadata(metadata)?;
+        dmi.set_metadata(metadata)?;
 
         let mut reader = ImageReader::open(&path)?;
         reader.set_format(image::ImageFormat::Png);
@@ -211,7 +214,10 @@ impl Dmi {
 
         Ok(dmi)
     }
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> DmiResult<()> {
+    pub fn save<P>(&self, path: P) -> DmiResult<()>
+    where
+        P: AsRef<Path>,
+    {
         let total_frames = self
             .states
             .iter()
@@ -234,6 +240,12 @@ impl Dmi {
             }
         }
 
+        if let Some(parent) = path.as_ref().parent() {
+            if !parent.exists() {
+                create_dir_all(parent)?;
+            }
+        }
+
         let mut writer = BufWriter::new(File::create(path)?);
         let mut encoder = Encoder::new(&mut writer, width, height);
 
@@ -241,7 +253,7 @@ impl Dmi {
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
 
-        encoder.add_ztxt_chunk("Description".to_string(), self.metadata())?;
+        encoder.add_ztxt_chunk("Description".to_string(), self.get_metadata())?;
 
         let mut writer = encoder.write_header()?;
 
@@ -249,49 +261,55 @@ impl Dmi {
 
         Ok(())
     }
-    pub fn serialize<P: AsRef<Path>>(&self, path: P, exact_path: bool) -> DmiResult<SerializedDmi> {
-        let path = if !exact_path {
-            find_dir(path.as_ref().join(self.name.clone())).ok_or(DmiError::FindDirError)?
-        } else {
-            path.as_ref().to_str().unwrap().to_string()
-        };
-        let path = Path::new(&path);
+    pub fn to_serialized<P>(&self, path: P, exact_path: bool) -> DmiResult<SerializedDmi>
+    where
+        P: AsRef<Path>,
+    {
+        let mut path = path.as_ref().to_path_buf();
+
+        if !exact_path {
+            path = find_directory(path.join(&self.name));
+        }
 
         if path.exists() {
-            fs::remove_dir_all(path)?;
+            remove_dir_all(&path)?;
         }
-        fs::create_dir_all(path)?;
 
-        let mut serialized_dmi = SerializedDmi {
+        create_dir_all(&path)?;
+
+        let mut states = Vec::new();
+
+        for state in self.states.iter() {
+            states.push(state.to_serialized(&path)?);
+        }
+
+        Ok(SerializedDmi {
             name: self.name.clone(),
             width: self.width,
             height: self.height,
-            states: Vec::new(),
+            states,
             temp: path.to_str().unwrap().to_string(),
-        };
-
-        for state in self.states.iter() {
-            serialized_dmi.states.push(state.serialize(path)?);
+        })
+    }
+    pub fn from_serialized(serialized: SerializedDmi) -> DmiResult<Dmi> {
+        if !Path::new(&serialized.temp).exists() {
+            return Err(DmiError::DirDoesNotExist);
         }
 
-        Ok(serialized_dmi)
-    }
-    pub fn deserialize(serialized: SerializedDmi) -> DmiResult<Dmi> {
-        let mut dmi = Self {
+        let mut states = Vec::new();
+
+        for state in serialized.states {
+            states.push(State::from_serialized(state, &serialized.temp)?);
+        }
+
+        Ok(Self {
             name: serialized.name,
             width: serialized.width,
             height: serialized.height,
-            states: Vec::new(),
-        };
-
-        for state in serialized.states {
-            dmi.states
-                .push(State::deserialize(state, &serialized.temp)?);
-        }
-
-        Ok(dmi)
+            states,
+        })
     }
-    pub fn resize(&mut self, width: u32, height: u32, method: imageops::FilterType) {
+    pub fn resize(&mut self, width: u32, height: u32, method: image::imageops::FilterType) {
         self.width = width;
         self.height = height;
         for state in self.states.iter_mut() {
@@ -333,27 +351,26 @@ impl State {
         state.frame_count = 1;
         state
     }
-    pub fn serialize<P: AsRef<OsStr>>(&self, path: P) -> DmiResult<SerializedState> {
-        let mut state = SerializedState {
-            name: self.name.clone(),
-            dirs: self.dirs,
-            frame_key: String::default(),
-            frame_count: self.frame_count,
-            delays: self.delays.clone(),
-            loop_: self.loop_,
-            rewind: self.rewind,
-            movement: self.movement,
-            hotspots: self.hotspots.clone(),
-        };
+    pub fn to_serialized<P>(&self, path: P) -> DmiResult<SerializedState>
+    where
+        P: AsRef<OsStr>,
+    {
+        let path = Path::new(&path);
+
+        if !path.exists() {
+            create_dir_all(path)?;
+        }
+
+        let frame_key: String;
 
         {
             let mut index = 1;
-            let mut path = Path::new(&path).join(".bytes");
+            let mut path = path.join(".bytes");
             loop {
-                let frame_key = format!("{}.{}", self.name, index);
-                path.set_file_name(format!("{}.{}.bytes", frame_key, 0));
+                let frame_key_ = format!("{}.{}", self.name, index);
+                path.set_file_name(format!("{frame_key_}.0.bytes"));
                 if !path.exists() {
-                    state.frame_key = frame_key;
+                    frame_key = frame_key_;
                     break;
                 }
                 index += 1;
@@ -364,34 +381,65 @@ impl State {
         for frame in 0..self.frame_count {
             for direction in 0..self.dirs {
                 let image = &self.frames[(frame * self.dirs + direction) as usize];
-                let path = Path::new(&path).join(format!("{}.{}.bytes", state.frame_key, index));
+                let path = Path::new(&path).join(format!("{frame_key}.{index}.bytes"));
                 save_image_as_bytes(image, &path)?;
                 index += 1;
             }
         }
 
-        Ok(state)
+        Ok(SerializedState {
+            name: self.name.clone(),
+            dirs: self.dirs,
+            frame_key,
+            frame_count: self.frame_count,
+            delays: self.delays.clone(),
+            loop_: self.loop_,
+            rewind: self.rewind,
+            movement: self.movement,
+            hotspots: self.hotspots.clone(),
+        })
     }
-    pub fn deserialize<P: AsRef<OsStr>>(serialized: SerializedState, path: P) -> DmiResult<Self> {
-        let mut state = Self {
+    pub fn from_serialized<P>(serialized: SerializedState, path: P) -> DmiResult<Self>
+    where
+        P: AsRef<OsStr>,
+    {
+        let mut frames = Vec::new();
+
+        for frame in 0..(serialized.frame_count * serialized.dirs) {
+            let path = Path::new(&path).join(format!("{}.{}.bytes", serialized.frame_key, frame));
+            let image = load_image_from_bytes(path)?;
+            frames.push(image);
+        }
+
+        Ok(Self {
             name: serialized.name,
             dirs: serialized.dirs,
-            frames: Vec::new(),
+            frames,
             frame_count: serialized.frame_count,
             delays: serialized.delays,
             loop_: serialized.loop_,
             rewind: serialized.rewind,
             movement: serialized.movement,
             hotspots: serialized.hotspots,
-        };
+        })
+    }
+    pub fn into_clipboard(self) -> DmiResult<ClipboardState> {
+        let frames = self
+            .frames
+            .iter()
+            .map(image_to_base64)
+            .collect::<Result<Vec<_>, _>>()?;
 
-        for frame in 0..(serialized.frame_count * serialized.dirs) {
-            let path = Path::new(&path).join(format!("{}.{}.bytes", serialized.frame_key, frame));
-            let image = load_image_from_bytes(path)?;
-            state.frames.push(image);
-        }
-
-        Ok(state)
+        Ok(ClipboardState {
+            name: self.name,
+            dirs: self.dirs,
+            frames,
+            delays: self.delays,
+            loop_: self.loop_,
+            rewind: self.rewind,
+            movement: self.movement,
+            hotspots: self.hotspots,
+        })
     }
     pub fn from_clipboard(state: ClipboardState, width: u32, height: u32) -> DmiResult<Self> {
         let mut frames = Vec::new();
@@ -424,24 +472,6 @@ impl State {
             rewind: state.rewind,
             movement: state.movement,
             hotspots: state.hotspots,
-        })
-    }
-    pub fn into_clipboard(self) -> DmiResult<ClipboardState> {
-        let frames = self
-            .frames
-            .iter()
-            .map(image_to_base64)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(ClipboardState {
-            name: self.name,
-            dirs: self.dirs,
-            frames,
-            delays: self.delays,
-            loop_: self.loop_,
-            rewind: self.rewind,
-            movement: self.movement,
-            hotspots: self.hotspots,
         })
     }
     pub fn resize(&mut self, width: u32, height: u32, method: imageops::FilterType) {
@@ -516,6 +546,8 @@ pub enum DmiError {
     ImageSizeMismatch,
     #[error("Failed to find available directory")]
     FindDirError,
+    #[error("Directory does not exist")]
+    DirDoesNotExist,
 }
 
 fn save_image_as_bytes<P: AsRef<Path>>(image: &DynamicImage, path: P) -> DmiResult<()> {

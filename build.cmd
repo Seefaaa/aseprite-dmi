@@ -8,6 +8,7 @@ IF %ERRORLEVEL% EQU 0 (
 )
 
 SET EXTENSION_NAME=aseprite-dmi
+SET LIBRARY_NAME=dmi
 SET TARGET=debug
 SET SKIP=0
 
@@ -39,8 +40,8 @@ IF %SKIP% EQU 0 (
 	)
 )
 
-IF NOT EXIST lib\target\%TARGET%\lib.exe (
-	echo "lib.exe was not built. Please check for errors."
+IF NOT EXIST lib\target\%TARGET%\%LIBRARY_NAME%.dll (
+	echo "lib was not built. Please check for errors."
 	exit /b 1
 )
 
@@ -53,8 +54,8 @@ mkdir dist\unzipped
 
 copy package.json dist\unzipped
 copy LICENSE dist\unzipped
-
-copy lib\target\%TARGET%\lib.exe dist\unzipped
+copy lua54.dll dist\unzipped
+copy lib\target\%TARGET%\%LIBRARY_NAME%.dll dist\unzipped
 
 xcopy /E scripts\ dist\unzipped\scripts\
 
