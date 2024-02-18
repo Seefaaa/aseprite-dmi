@@ -215,7 +215,6 @@ function general_check()
 		if libdmi.exists(TEMP_DIR) and libdmi.instances() == 1 then
 			libdmi.remove_dir(TEMP_DIR, false)
 		end
-	else
 		checked = true
 	end
 end
