@@ -383,8 +383,8 @@ end
 function Editor:resize()
 	if not self.dmi then return end
 
-	local original_width = math.floor(self.dmi.width)
-	local original_height = math.floor(self.dmi.height)
+	local original_width = self.dmi.width
+	local original_height = self.dmi.height
 	local ratio = original_width / original_height
 
 	local dialog = Dialog {
@@ -400,20 +400,23 @@ function Editor:resize()
 		text = tostring(original_width),
 		decimals = 0,
 		onchange = function()
-			local width = math.floor(dialog.data.width)
+			local width = dialog.data.width
+
 			dialog:modify {
 				id = "width_percentage",
-				text = tostring(width / original_width * 100)
+				text = width / original_width * 100
 			}
+
 			if dialog.data.ratio_lock then
 				local height = math.floor(width / ratio)
+
 				dialog:modify {
 					id = "height",
-					text = tostring(height)
+					text = height
 				}
 				dialog:modify {
 					id = "height_percentage",
-					text = tostring(height / original_height * 100)
+					text = height / original_height * 100
 				}
 			end
 		end
@@ -425,20 +428,23 @@ function Editor:resize()
 		text = tostring(original_height),
 		decimals = 0,
 		onchange = function()
-			local height = math.floor(dialog.data.height)
+			local height = dialog.data.height
+
 			dialog:modify {
 				id = "height_percentage",
-				text = tostring(height / original_height * 100)
+				text = height / original_height * 100
 			}
+
 			if dialog.data.ratio_lock then
 				local width = math.floor(height * ratio)
+
 				dialog:modify {
 					id = "width",
-					text = tostring(width)
+					text = width
 				}
 				dialog:modify {
 					id = "width_percentage",
-					text = tostring(width / original_width * 100)
+					text = width / original_width * 100
 				}
 			end
 		end
@@ -450,15 +456,16 @@ function Editor:resize()
 		selected = true,
 		onclick = function()
 			if dialog.data.ratio_lock then
-				local width = math.floor(dialog.data.width)
+				local width = dialog.data.width
 				local height = math.floor(width / ratio)
+
 				dialog:modify {
 					id = "height",
-					text = tostring(height)
+					text = height
 				}
 				dialog:modify {
 					id = "height_percentage",
-					text = tostring(height / original_height * 100)
+					text = height / original_height * 100
 				}
 			end
 		end
@@ -473,19 +480,22 @@ function Editor:resize()
 		onchange = function()
 			local width = dialog.data.width_percentage
 			width = math.floor(width * original_width / 100)
+
 			dialog:modify {
 				id = "width",
-				text = tostring(width)
+				text = width
 			}
+
 			if dialog.data.ratio_lock then
 				local height = math.floor(width / ratio)
+
 				dialog:modify {
 					id = "height",
-					text = tostring(height)
+					text = height
 				}
 				dialog:modify {
 					id = "height_percentage",
-					text = tostring(height / original_height * 100)
+					text = height / original_height * 100
 				}
 			end
 		end
@@ -498,19 +508,22 @@ function Editor:resize()
 		onchange = function()
 			local height = dialog.data.height_percentage
 			height = math.floor(height * original_height / 100)
+
 			dialog:modify {
 				id = "height",
-				text = tostring(height)
+				text = height
 			}
+
 			if dialog.data.ratio_lock then
 				local width = math.floor(height * ratio)
+
 				dialog:modify {
 					id = "width",
-					text = tostring(width)
+					text = width
 				}
 				dialog:modify {
 					id = "width_percentage",
-					text = tostring(width / original_width * 100)
+					text = width / original_width * 100
 				}
 			end
 		end
@@ -529,16 +542,17 @@ function Editor:resize()
 		focus = true,
 		text = "&OK",
 		onclick = function()
-			local width = tonumber(dialog.data.width)
-			local height = tonumber(dialog.data.height)
+			local width = dialog.data.width
+			local height = dialog.data.height
 			local method = dialog.data.method
-
-			if not width or not height then
-				return
-			end
 
 			if width < 3 or height < 3 then
 				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels" }
+				return
+			end
+
+			if width == original_width and height == original_height then
+				app.alert { title = "Warning", text = "Width and height must be different from the original size" }
 				return
 			end
 
@@ -595,8 +609,8 @@ end
 function Editor:crop()
 	if not self.dmi then return end
 
-	local original_width = math.floor(self.dmi.width)
-	local original_height = math.floor(self.dmi.height)
+	local original_width = self.dmi.width
+	local original_height = self.dmi.height
 
 	local dialog = Dialog {
 		title = "Crop"
@@ -610,6 +624,33 @@ function Editor:crop()
 		label = "Width:",
 		text = tostring(original_width),
 		decimals = 0,
+		onchange = function()
+			local width = dialog.data.width
+			local left = dialog.data.left
+
+			if width > original_width then
+				return
+			end
+
+			if dialog.data.center then
+				left = math.floor((original_width - width) / 2)
+
+				dialog:modify {
+					id = "left",
+					value = left
+				}
+			elseif left > original_width - width then
+				dialog:modify {
+					id = "left",
+					value = original_width - width
+				}
+			end
+
+			dialog:modify {
+				id = "left",
+				max = original_width - width
+			}
+		end
 	}
 
 	dialog:number {
@@ -617,43 +658,106 @@ function Editor:crop()
 		label = "Height:",
 		text = tostring(original_height),
 		decimals = 0,
+		onchange = function()
+			local height = dialog.data.height
+			local top = dialog.data.top
+
+			if height > original_height then
+				return
+			end
+
+			if dialog.data.center then
+				top = math.floor((original_height - height) / 2)
+
+				dialog:modify {
+					id = "top",
+					value = top
+				}
+			elseif top > original_height - height then
+				dialog:modify {
+					id = "top",
+					value = original_height - height
+				}
+			end
+
+			dialog:modify {
+				id = "top",
+				max = original_height - height
+			}
+		end
 	}
 
 	dialog:separator { text = "Offset:" }
 
-	dialog:number {
+	dialog:slider {
 		id = "top",
 		label = "Top:",
-		text = "0",
-		decimals = 0,
+		value = 0,
+		min = 0,
+		max = 0,
+		onchange = function()
+			dialog:modify {
+				id = "center",
+				selected = false
+			}
+		end
 	}
 
-	dialog:number {
+	dialog:slider {
 		id = "left",
 		label = "Left:",
-		text = "0",
-		decimals = 0,
+		value = 0,
+		min = 0,
+		max = 0,
+		onchange = function()
+			dialog:modify {
+				id = "center",
+				selected = false
+			}
+		end
+	}
+
+	dialog:check {
+		id = "center",
+		label = "Center:",
+		selected = true,
+		onclick = function()
+			local width = dialog.data.width
+			local height = dialog.data.height
+			local left = dialog.data.left
+			local top = dialog.data.top
+
+			if dialog.data.center then
+				left = math.floor((original_width - width) / 2)
+				top = math.floor((original_height - height) / 2)
+			end
+
+			dialog:modify {
+				id = "left",
+				value = left
+			}
+			dialog:modify {
+				id = "top",
+				value = top
+			}
+		end
 	}
 
 	dialog:button {
 		focus = true,
 		text = "&OK",
 		onclick = function()
-			local width = tonumber(dialog.data.width)
-			local height = tonumber(dialog.data.height)
-			local left = tonumber(dialog.data.left)
-			local top = tonumber(dialog.data.top)
-
-			if not width or not height or not left or not top then
-				return
-			end
+			local width = dialog.data.width
+			local height = dialog.data.height
+			local left = dialog.data.left
+			local top = dialog.data.top
 
 			if width < 3 or height < 3 then
 				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels" }
 				return
 			end
 
-			if width >= original_width or height >= original_height then
+			if width > original_width or height > original_height or (width == original_width and height == original_height) then
 				app.alert { title = "Warning", text = "Width and height must be less than the original size" }
 				return
 			end
@@ -703,8 +807,8 @@ end
 function Editor:expand()
 	if not self.dmi then return end
 
-	local original_width = math.floor(self.dmi.width)
-	local original_height = math.floor(self.dmi.height)
+	local original_width = self.dmi.width
+	local original_height = self.dmi.height
 
 	local dialog = Dialog {
 		title = "Expand"
@@ -719,21 +823,24 @@ function Editor:expand()
 		text = tostring(original_width),
 		decimals = 0,
 		onchange = function()
-			if dialog.data.anchor ~= "Custom" then
-				local width = math.floor(dialog.data.width)
-				local left = math.floor(dialog.data.left)
+			local width = dialog.data.width
+			if width >= original_width then
+				local left = dialog.data.left
 
-				if string.find(dialog.data.anchor, "middle") or dialog.data.anchor == "Center" then
-					left = math.floor((width - original_width) / 2)
-				elseif string.find(dialog.data.anchor, "left") then
-					left = 0
-				elseif string.find(dialog.data.anchor, "right") then
-					left = width - original_width
+				if dialog.data.anchor ~= "Custom" then
+					if string.find(dialog.data.anchor, "middle") or dialog.data.anchor == "Center" then
+						left = math.floor((width - original_width) / 2)
+					elseif string.find(dialog.data.anchor, "left") then
+						left = 0
+					elseif string.find(dialog.data.anchor, "right") then
+						left = width - original_width
+					end
 				end
 
 				dialog:modify {
 					id = "left",
-					text = tostring(left)
+					max = width - original_width,
+					value = left
 				}
 			end
 		end
@@ -745,21 +852,24 @@ function Editor:expand()
 		text = tostring(original_height),
 		decimals = 0,
 		onchange = function()
-			if dialog.data.anchor ~= "Custom" then
-				local height = math.floor(dialog.data.height)
-				local top = math.floor(dialog.data.top)
+			local height = dialog.data.height
+			if height >= original_height then
+				local top = dialog.data.top
 
-				if string.find(dialog.data.anchor, "Middle") or dialog.data.anchor == "Center" then
-					top = math.floor((height - original_height) / 2)
-				elseif string.find(dialog.data.anchor, "Top") then
-					top = 0
-				elseif string.find(dialog.data.anchor, "Bottom") then
-					top = height - original_height
+				if dialog.data.anchor ~= "Custom" then
+					if string.find(dialog.data.anchor, "Middle") or dialog.data.anchor == "Center" then
+						top = math.floor((height - original_height) / 2)
+					elseif string.find(dialog.data.anchor, "Top") then
+						top = 0
+					elseif string.find(dialog.data.anchor, "Bottom") then
+						top = height - original_height
+					end
 				end
 
 				dialog:modify {
 					id = "top",
-					text = tostring(top)
+					max = height - original_height,
+					value = top
 				}
 			end
 		end
@@ -767,11 +877,12 @@ function Editor:expand()
 
 	dialog:separator { text = "Anchor:" }
 
-	dialog:number {
+	dialog:slider {
 		id = "top",
 		label = "Top:",
-		text = "0",
-		decimals = 0,
+		value = 0,
+		min = 0,
+		max = 0,
 		onchange = function()
 			dialog:modify {
 				id = "anchor",
@@ -780,11 +891,12 @@ function Editor:expand()
 		end
 	}
 
-	dialog:number {
+	dialog:slider {
 		id = "left",
 		label = "Left:",
-		text = "0",
-		decimals = 0,
+		value = 0,
+		min = 0,
+		max = 0,
 		onchange = function()
 			dialog:modify {
 				id = "anchor",
@@ -795,15 +907,15 @@ function Editor:expand()
 
 	dialog:combobox {
 		id = "anchor",
-		label = "Preset:",
+		label = "Align:",
 		option = "Center",
 		options = { "Top-left", "Top-middle", "Top-right", "Middle-left", "Center", "Middle-right", "Bottom-left", "Bottom-middle", "Bottom-right", "Custom" },
 		onchange = function()
 			if dialog.data.anchor ~= "Custom" then
-				local width = math.floor(dialog.data.width)
-				local height = math.floor(dialog.data.height)
-				local left = math.floor(dialog.data.left)
-				local top = math.floor(dialog.data.top)
+				local width = dialog.data.width
+				local height = dialog.data.height
+				local left = dialog.data.left
+				local top = dialog.data.top
 
 				if string.find(dialog.data.anchor, "middle") or dialog.data.anchor == "Center" then
 					left = math.floor((width - original_width) / 2)
@@ -823,11 +935,11 @@ function Editor:expand()
 
 				dialog:modify {
 					id = "left",
-					text = tostring(left)
+					value = left
 				}
 				dialog:modify {
 					id = "top",
-					text = tostring(top)
+					value = top
 				}
 			end
 		end
@@ -837,21 +949,17 @@ function Editor:expand()
 		focus = true,
 		text = "&OK",
 		onclick = function()
-			local width = tonumber(dialog.data.width)
-			local height = tonumber(dialog.data.height)
-			local left = tonumber(dialog.data.left)
-			local top = tonumber(dialog.data.top)
-
-			if not width or not height or not left or not top then
-				return
-			end
+			local width = dialog.data.width
+			local height = dialog.data.height
+			local left = dialog.data.left
+			local top = dialog.data.top
 
 			if width < 3 or height < 3 then
 				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels" }
 				return
 			end
 
-			if width <= original_width or height <= original_height then
+			if width < original_width or height < original_height or (width == original_width and height == original_height) then
 				app.alert { title = "Warning", text = "Width and height must be greater than the original size" }
 				return
 			end

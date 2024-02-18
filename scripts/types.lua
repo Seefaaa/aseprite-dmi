@@ -525,6 +525,7 @@ WebSocketMessageType = {
 --- @field close fun(self: Dialog)
 --- @field modify fun(self: Dialog, params: Dialog.ModifyParams)
 --- @field newrow fun(self: Dialog, params?: Dialog.NewRowParams)
+--- @field slider fun(self: Dialog, params: Dialog.SliderParams)
 
 --- @class Dialog.SeparatorParams
 --- @field id? string
@@ -601,6 +602,15 @@ WebSocketMessageType = {
 
 --- @class Dialog.NewRowParams
 --- @field always? boolean
+
+--- @class Dialog.SliderParams
+--- @field id? string
+--- @field label? string
+--- @field min number
+--- @field max number
+--- @field value number
+--- @field onchange? function
+--- @field onrelease? function
 
 --- @class Cel: table
 --- @field sprite Sprite
