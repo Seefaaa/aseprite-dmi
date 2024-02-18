@@ -17,7 +17,6 @@ You can now open DMI files in Aseprite just like other file formats.
 ### Requirements
 
 - [Rust](https://www.rust-lang.org/)
-- [winres](https://crates.io/crates/winres) (windows)
 
 ### Windows
 
