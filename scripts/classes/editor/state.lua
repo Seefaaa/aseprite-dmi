@@ -5,9 +5,6 @@
 function Editor.new_file(plugin_path)
 	local previous_sprite = app.sprite
 	if app.command.NewFile { width = 32, height = 32 } then
-		loadlib(plugin_path)
-		general_check()
-
 		if previous_sprite ~= app.sprite then
 			local width = app.sprite.width
 			local height = app.sprite.height
@@ -18,6 +15,9 @@ function Editor.new_file(plugin_path)
 				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels", buttons = { "&OK" } }
 				return
 			end
+
+			loadlib(plugin_path)
+			general_check()
 
 			local dmi, error = libdmi.new_file("untitled", width, height, TEMP_DIR)
 			if not error then

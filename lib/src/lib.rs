@@ -6,6 +6,7 @@ use crate::dmi::{ClipboardState, Dmi, SerializedDmi, SerializedState, State};
 use crate::utils::check_latest_release;
 
 mod dmi;
+mod macros;
 mod utils;
 
 fn new_file(
@@ -158,9 +159,9 @@ fn instances(_: &Lua, _: ()) -> LuaResult<usize> {
 }
 
 fn check_update(_: &Lua, (): ()) -> LuaResult<bool> {
-    let is_up_to_date = check_latest_release().unwrap_or(true);
+    let up_to_date = check_latest_release().unwrap_or(true);
 
-    Ok(!is_up_to_date)
+    Ok(!up_to_date)
 }
 
 fn open_repo(_: &Lua, path: Option<String>) -> LuaResult<LuaValue> {
@@ -175,28 +176,6 @@ fn open_repo(_: &Lua, path: Option<String>) -> LuaResult<LuaValue> {
     }
 
     Ok(LuaValue::Nil)
-}
-
-fn safe_lua_function<'lua, A, R, F>(
-    lua: &'lua Lua,
-    func: F,
-    multi: A,
-) -> LuaResult<(Option<R>, Option<String>)>
-where
-    A: FromLuaMulti<'lua>,
-    R: IntoLuaMulti<'lua>,
-    F: Fn(&'lua Lua, A) -> LuaResult<R>,
-{
-    match func(lua, multi) {
-        Ok(r) => Ok((Some(r), None)),
-        Err(err) => Ok((None, Some(err.to_string()))),
-    }
-}
-
-macro_rules! safe {
-    ($func:ident) => {
-        |lua, args| safe_lua_function(lua, $func, args)
-    };
 }
 
 #[mlua::lua_module]
