@@ -1,4 +1,5 @@
 use mlua::prelude::*;
+use std::fs::{self, read_dir, remove_dir_all};
 use std::path::Path;
 
 use crate::dmi::{ClipboardState, Dmi, SerializedDmi, SerializedState, State};
@@ -104,9 +105,9 @@ fn remove_dir(_: &Lua, (path, soft): (String, bool)) -> LuaResult<LuaValue> {
 
     if path.is_dir() {
         if !soft {
-            std::fs::remove_dir_all(path)?;
-        } else if std::fs::read_dir(path)?.next().is_none() {
-            std::fs::remove_dir(path)?;
+            remove_dir_all(path)?;
+        } else if read_dir(path)?.next().is_none() {
+            fs::remove_dir(path)?;
         }
     }
 
@@ -131,6 +132,21 @@ fn open_repo(_: &Lua, path: Option<String>) -> LuaResult<LuaValue> {
     }
 
     Ok(LuaValue::Nil)
+}
+
+fn exists(_: &Lua, path: String) -> LuaResult<bool> {
+    let path = Path::new(&path);
+
+    Ok(path.exists())
+}
+
+fn instances(_: &Lua, _: ()) -> LuaResult<usize> {
+    let mut system = sysinfo::System::new();
+    let refresh_kind =
+        sysinfo::ProcessRefreshKind::new().with_exe(sysinfo::UpdateKind::OnlyIfNotSet);
+    system.refresh_processes_specifics(refresh_kind);
+
+    Ok(system.processes_by_name("aseprite").count())
 }
 
 fn safe_lua_function<'lua, A, R, F>(
@@ -169,8 +185,10 @@ fn dmi_module(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("paste_state", lua.create_function(safe!(paste_state))?)?;
     exports.set("resize", lua.create_function(safe!(resize))?)?;
     exports.set("remove_dir", lua.create_function(safe!(remove_dir))?)?;
+    exports.set("exists", lua.create_function(exists)?)?;
     exports.set("check_update", lua.create_function(check_update)?)?;
     exports.set("open_repo", lua.create_function(safe!(open_repo))?)?;
+    exports.set("instances", lua.create_function(instances)?)?;
 
     Ok(exports)
 }

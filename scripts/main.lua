@@ -35,14 +35,11 @@ function init(plugin)
 			if app.sprite and app.sprite.filename:ends_with(".dmi") then
 				local filename = app.sprite.filename
 				app.command.CloseFile { ui = false }
-				local check_update_ = false
-				if not libdmi then
-					loadlib(plugin.path)
-					check_update_ = true
-				end
-				Editor.new(DIALOG_NAME, filename, nil, check_update_ and function()
-					check_update()
-				end or nil)
+
+				loadlib(plugin.path)
+				general_check()
+
+				Editor.new(DIALOG_NAME, filename, nil)
 			end
 		elseif ev.name == "Exit" then
 			exiting = true
@@ -122,9 +119,7 @@ function init(plugin)
 		title = "Report Issue",
 		group = "dmi_editor",
 		onclick = function()
-			if not libdmi then
-				loadlib(plugin.path)
-			end
+			loadlib(plugin.path)
 			libdmi.open_repo("issues")
 		end,
 	}
@@ -134,9 +129,7 @@ function init(plugin)
 		title = "Releases",
 		group = "dmi_editor",
 		onclick = function()
-			if not libdmi then
-				loadlib(plugin.path)
-			end
+			loadlib(plugin.path)
 			libdmi.open_repo("releases")
 		end,
 	}
@@ -146,7 +139,8 @@ end
 --- @param plugin Plugin The plugin object.
 function exit(plugin)
 	if not exiting and libdmi then
-		print("To uninstall the extension, re-open the Aseprite without using the extension and try again.\nThis happens beacuse once the library (dll) is loaded, it cannot be unloaded.\n")
+		print(
+			"To uninstall the extension, re-open the Aseprite without using the extension and try again.\nThis happens beacuse once the library (dll) is loaded, it cannot be unloaded.\n")
 		return
 	end
 	if after_listener then
@@ -178,11 +172,19 @@ function loadlib(plugin_path)
 	end
 end
 
---- Checks for updates.
-function check_update()
-	local available = libdmi.check_update()
-	if available then
-		update_popup()
+local checked = false
+
+--- General checks.
+function general_check()
+	if not checked then
+		if libdmi.check_update() then
+			update_popup()
+		end
+		if libdmi.exists(TEMP_DIR) and libdmi.instances() == 1 then
+			libdmi.remove_dir(TEMP_DIR, false)
+		end
+	else
+		checked = true
 	end
 end
 
@@ -194,7 +196,7 @@ function update_popup()
 
 	dialog:label {
 		focus = true,
-		text = "An update is available for DMI Editor.",
+		text = "An update is available for " .. DIALOG_NAME .. ".",
 	}
 
 	dialog:newrow()

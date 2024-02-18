@@ -45,7 +45,8 @@ if not SKIP:
 
 os.chdir(working_dir)
 
-if sys.platform.startswith('win'):
+win = sys.platform.startswith('win')
+if win:
     library_extension = ".dll"
     library_prefix = ""
 else:
@@ -69,8 +70,10 @@ os.makedirs(unzipped_dir)
 
 shutil.copy("package.json", unzipped_dir)
 shutil.copy("LICENSE", unzipped_dir)
-shutil.copy(f"{library_prefix}lua54{library_extension}", unzipped_dir)
 shutil.copy(library_source, unzipped_dir)
+
+if win:
+    shutil.copy(f"{library_prefix}lua54{library_extension}", unzipped_dir)
 
 shutil.copytree(os.path.join("scripts"), os.path.join(unzipped_dir, "scripts"))
 

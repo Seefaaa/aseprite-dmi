@@ -7,17 +7,13 @@
 
 ------------------- NAMESPACES -------------------
 
-if not app then
-	--- @type app
-	--- @diagnostic disable-next-line: missing-fields
-	app = {}
-end
+--- @type app
+--- @diagnostic disable-next-line: missing-fields
+app = {}
 
-if not json then
-	--- @type json
-	--- @diagnostic disable-next-line: missing-fields
-	json = {}
-end
+--- @type json
+--- @diagnostic disable-next-line: missing-fields
+json = {}
 
 ------------------- CONSTRUCTORS -------------------
 
@@ -25,16 +21,14 @@ end
 --- @field x number
 --- @field y number
 
-if not Point then
-	--- Creates a new Point object.
-	--- @return Point point
-	--- @overload fun(x: number, y: number): Point
-	--- @overload fun(otherPoint: Point): Point
-	--- @overload fun(tbl: Point.Params): Point
-	--- @overload fun(tbl: number[]): Point
-	function Point()
-		return {}
-	end
+--- Creates a new Point object.
+--- @return Point point
+--- @overload fun(x: number, y: number): Point
+--- @overload fun(otherPoint: Point): Point
+--- @overload fun(tbl: Point.Params): Point
+--- @overload fun(tbl: number[]): Point
+function Point()
+	return {}
 end
 
 --- @class Color.ParamsIndex
@@ -52,16 +46,14 @@ end
 --- @field b number
 --- @field a number
 
-if not Color then
-	--- Creates a new Color object.
-	--- @return Color color
-	--- @overload fun(r: number, g: number, b: number, a: number): Color
-	--- @overload fun(index: number): Color
-	--- @overload fun(params: Color.ParamsIndex|Color.ParamsRGB|Color.ParamsRGB2): Color
-	--- @todo HSVA HSLA GRAY
-	function Color()
-		return {}
-	end
+--- Creates a new Color object.
+--- @return Color color
+--- @overload fun(r: number, g: number, b: number, a: number): Color
+--- @overload fun(index: number): Color
+--- @overload fun(params: Color.ParamsIndex|Color.ParamsRGB|Color.ParamsRGB2): Color
+--- @todo HSVA HSLA GRAY
+function Color()
+	return {}
 end
 
 --- @class Rectangle.Params
@@ -76,15 +68,13 @@ end
 --- @field w number
 --- @field h number
 
-if not Rectangle then
-	--- Creates a new Rectangle object.
-	--- @return Rectangle rectangle
-	--- @overload fun(otherRectangle: Rectangle): Rectangle
-	--- @overload fun(x: number, y: number, width: number, height: number): Rectangle
-	--- @overload fun(params: Rectangle.Params|Rectangle.Params2|(number)[]): Rectangle
-	function Rectangle()
-		return {}
-	end
+--- Creates a new Rectangle object.
+--- @return Rectangle rectangle
+--- @overload fun(otherRectangle: Rectangle): Rectangle
+--- @overload fun(x: number, y: number, width: number, height: number): Rectangle
+--- @overload fun(params: Rectangle.Params|Rectangle.Params2|(number)[]): Rectangle
+function Rectangle()
+	return {}
 end
 
 --- @class Size.Params
@@ -95,32 +85,28 @@ end
 --- @field w number
 --- @field h number
 
-if not Size then
-	--- Creates a new Size object.
-	--- @return Size size
-	--- @overload fun(width: number, height: number): Size
-	--- @overload fun(otherSize: Size): Size
-	--- @overload fun(params: Size.Params|Size.Params2|(number)[]): Size
-	function Size()
-		return {}
-	end
+--- Creates a new Size object.
+--- @return Size size
+--- @overload fun(width: number, height: number): Size
+--- @overload fun(otherSize: Size): Size
+--- @overload fun(params: Size.Params|Size.Params2|(number)[]): Size
+function Size()
+	return {}
 end
 
 --- @class Image.Params
 --- @field fromFile string
 
-if not Image then
-	--- Creates a new Image object.
-	--- @return Image image
-	--- @overload fun(width: number, height: number, colorMode?: ColorMode): Image
-	--- @overload fun(spec: ImageSpec): Image
-	--- @overload fun(sprite: Sprite): Image
-	--- @overload fun(otherImage: Image): Image
-	--- @overload fun(otherImage: Image, rectangle: Rectangle): Image
-	--- @overload fun(params: Image.Params): Image
-	function Image()
-		return {}
-	end
+--- Creates a new Image object.
+--- @return Image image
+--- @overload fun(width: number, height: number, colorMode?: ColorMode): Image
+--- @overload fun(spec: ImageSpec): Image
+--- @overload fun(sprite: Sprite): Image
+--- @overload fun(otherImage: Image): Image
+--- @overload fun(otherImage: Image, rectangle: Rectangle): Image
+--- @overload fun(params: Image.Params): Image
+function Image()
+	return {}
 end
 
 --- @class ImageSpec.Params
@@ -129,14 +115,12 @@ end
 --- @field colorMode ColorMode
 --- @field transparentColor number
 
-if not ImageSpec then
-	--- Creates a new ImageSpec object.
-	--- @return ImageSpec spec
-	--- @overload fun(otherImageSpec: ImageSpec): ImageSpec
-	--- @overload fun(params: ImageSpec.Params): ImageSpec
-	function ImageSpec()
-		return {}
-	end
+--- Creates a new ImageSpec object.
+--- @return ImageSpec spec
+--- @overload fun(otherImageSpec: ImageSpec): ImageSpec
+--- @overload fun(params: ImageSpec.Params): ImageSpec
+function ImageSpec()
+	return {}
 end
 
 --- @class Dialog.Params
@@ -145,29 +129,25 @@ end
 --- @field parent? Dialog
 --- @field onclose? function
 
-if not Dialog then
-	--- Creates a new Dialog object.
-	--- @return Dialog dialog
-	--- @overload fun(title: string): Dialog
-	--- @overload fun(params: Dialog.Params): Dialog
-	function Dialog()
-		return {}
-	end
+--- Creates a new Dialog object.
+--- @return Dialog dialog
+--- @overload fun(title: string): Dialog
+--- @overload fun(params: Dialog.Params): Dialog
+function Dialog()
+	return {}
 end
 
 --- @class Sprite.Params
 --- @field fromFile string
 
-if not Sprite then
-	--- Creates a new Sprite object.
-	--- @return Sprite sprite
-	--- @overload fun(width: number, height: number, colorMode?: ColorMode): Sprite
-	--- @overload fun(spec: ImageSpec): Sprite
-	--- @overload fun(otherSprite: Sprite): Sprite
-	--- @overload fun(params: Sprite.Params): Sprite
-	function Sprite()
-		return {}
-	end
+--- Creates a new Sprite object.
+--- @return Sprite sprite
+--- @overload fun(width: number, height: number, colorMode?: ColorMode): Sprite
+--- @overload fun(spec: ImageSpec): Sprite
+--- @overload fun(otherSprite: Sprite): Sprite
+--- @overload fun(params: Sprite.Params): Sprite
+function Sprite()
+	return {}
 end
 
 --- @class ColorSpace.Params
@@ -176,14 +156,12 @@ end
 --- @class ColorSpace.Params2
 --- @field fromFile string
 
-if not ColorSpace then
-	--- Creates a new ColorSpace object.
-	--- @return ColorSpace colorSpace
-	--- @overload fun(): ColorSpace
-	--- @overload fun(params: ColorSpace.Params|ColorSpace.Params2): ColorSpace
-	function ColorSpace()
-		return {}
-	end
+--- Creates a new ColorSpace object.
+--- @return ColorSpace colorSpace
+--- @overload fun(): ColorSpace
+--- @overload fun(params: ColorSpace.Params|ColorSpace.Params2): ColorSpace
+function ColorSpace()
+	return {}
 end
 
 --- @class Palette.Params
@@ -192,16 +170,14 @@ end
 --- @class Palette.Params2
 --- @field fromResource string
 
-if not Palette then
-	--- Creates a new Palette object.
-	--- @return Palette palette
-	--- @overload fun(): Palette
-	--- @overload fun(otherPalette: Palette): Palette
-	--- @overload fun(numberOfColors: number): Palette
-	--- @overload fun(params: Palette.Params|Palette.Params2): Palette
-	function Palette()
-		return {}
-	end
+--- Creates a new Palette object.
+--- @return Palette palette
+--- @overload fun(): Palette
+--- @overload fun(otherPalette: Palette): Palette
+--- @overload fun(numberOfColors: number): Palette
+--- @overload fun(params: Palette.Params|Palette.Params2): Palette
+function Palette()
+	return {}
 end
 
 --- @class WebSocket.Params
@@ -213,93 +189,83 @@ end
 
 --- @alias Websocket.Listener fun(data: any|nil, error: string|nil)
 
-if not WebSocket then
-	--- Creates a new WebSocket object.
-	--- @return WebSocket webSocket
-	--- @overload fun(params: WebSocket.Params): WebSocket
-	function WebSocket()
-		return {}
-	end
+--- Creates a new WebSocket object.
+--- @return WebSocket webSocket
+--- @overload fun(params: WebSocket.Params): WebSocket
+function WebSocket()
+	return {}
 end
 
 ------------------- ENUMS -------------------
 
-if not ColorMode then
-	ColorMode = {
-		RGB = 1,
-		GRAY = 2,
-		INDEXED = 3,
-		TILEMAP = 4,
-	}
-end
+ColorMode = {
+	RGB = 1,
+	GRAY = 2,
+	INDEXED = 3,
+	TILEMAP = 4,
+}
 
-if not MouseButton then
-	MouseButton = {
-		LEFT = 1,
-		MIDDLE = 2,
-		RIGHT = 3,
-		X1 = 4,
-		X2 = 5,
-	}
-end
+MouseButton = {
+	LEFT = 1,
+	MIDDLE = 2,
+	RIGHT = 3,
+	X1 = 4,
+	X2 = 5,
+}
 
-if not BlendMode then
-	BlendMode = {
-		NORMAL = 0,
-		SRC = 1,
-		MULTIPLY = 2,
-		SCREEN = 3,
-		OVERLAY = 4,
-		DARKEN = 5,
-		LIGHTEN = 6,
-		COLOR_DODGE = 7,
-		COLOR_BURN = 8,
-		HARD_LIGHT = 9,
-		SOFT_LIGHT = 10,
-		DIFFERENCE = 11,
-		EXCLUSION = 12,
-		HSL_HUE = 13,
-		HSL_SATURATION = 14,
-		HSL_COLOR = 15,
-		HSL_LUMINOSITY = 16,
-		ADDION = 17,
-		SUBTRACT = 18,
-		DIVIDE = 19,
-	}
-end
+BlendMode = {
+	NORMAL = 0,
+	SRC = 1,
+	MULTIPLY = 2,
+	SCREEN = 3,
+	OVERLAY = 4,
+	DARKEN = 5,
+	LIGHTEN = 6,
+	COLOR_DODGE = 7,
+	COLOR_BURN = 8,
+	HARD_LIGHT = 9,
+	SOFT_LIGHT = 10,
+	DIFFERENCE = 11,
+	EXCLUSION = 12,
+	HSL_HUE = 13,
+	HSL_SATURATION = 14,
+	HSL_COLOR = 15,
+	HSL_LUMINOSITY = 16,
+	ADDION = 17,
+	SUBTRACT = 18,
+	DIVIDE = 19,
+}
 
-if not WebSocketMessageType then
-	WebSocketMessageType = {
-		TEXT = "TEXT",
-		BINARY = "BINARY",
-		OPEN = "OPEN",
-		CLOSE = "CLOSE",
-		PING = "PING",
-		PONG = "PONG",
-		FRAGMENT = "FRAGMENT",
-	}
-end
+WebSocketMessageType = {
+	TEXT = "TEXT",
+	BINARY = "BINARY",
+	OPEN = "OPEN",
+	CLOSE = "CLOSE",
+	PING = "PING",
+	PONG = "PONG",
+	FRAGMENT = "FRAGMENT",
+}
 
 ------------------- TYPES -------------------
 
 --- @class app
 --- @field apiVersion number
----- @field version Version TODO
+--- @field version any TODO
 --- @field isUIAvailable boolean
 --- @field alert (fun(text: string): number)|(fun(params: app.alert.Params): number)
 --- @field transaction fun(name?: string, callback: function)
 --- @field sprite Sprite
 --- @field sprites (Sprite)[]
 --- @field frame Frame|number
----- @field site Site TODO
----- @field range Range TODO
+--- @field site any TODO
+--- @field range any TODO
 --- @field image Image
 --- @field layer Layer
 --- @field tag Tag
----- @field tool Tool TODO
----- @field brush Brush TODO
+--- @field tool any TODO
+--- @field brush any TODO
 --- @field editor Editor
----- @field window Window TODO
+--- @field window any TODO
 --- @field command table<string, function>
 --- @field pixelColor app.pixelColor
 --- @field fgColor Color
@@ -821,15 +787,17 @@ end
 ---| 'FRAGMENT'
 
 --- @class LibDmi: table
---- @field new_file fun(name: string, width: number, height: number, temp: string): Dmi|nil, string|nil
---- @field open_file fun(path: string, temp: string): Dmi|nil, string|nil
---- @field save_file fun(dmi: Dmi, filename: string): nil, string|nil
---- @field new_state fun(width: number, height: number, temp: string): State|nil, string|nil
---- @field copy_state fun(state: State, temp: string): nil, string|nil
---- @field paste_state fun(width: number, height: number, temp: string): State|nil, string|nil
---- @field resize fun(dmi: Dmi, width: number, height: number, medhod: string): nil, string|nil
---- @field remove_dir fun(path: string, soft: boolean): nil, string|nil
+--- @field new_file fun(name: string, width: number, height: number, temp: string): Dmi|nil, string|nil Creates a new DMI file. If fails, returns nil and an error message.
+--- @field open_file fun(path: string, temp: string): Dmi|nil, string|nil Opens a DMI file. If fails, returns nil and an error message.
+--- @field save_file fun(dmi: Dmi, filename: string): nil, string|nil Saves the DMI file. If fails, returns an error message.
+--- @field new_state fun(width: number, height: number, temp: string): State|nil, string|nil Creates a new state. If fails, returns nil and an error message.
+--- @field copy_state fun(state: State, temp: string): nil, string|nil Copies the state to the clipboard. If fails, returns an error message.
+--- @field paste_state fun(width: number, height: number, temp: string): State|nil, string|nil Pastes the state from the clipboard. If fails, returns nil and an error message.
+--- @field resize fun(dmi: Dmi, width: number, height: number, medhod: string): nil, string|nil Resizes the DMI file. If fails, returns an error message.
+--- @field remove_dir fun(path: string, soft: boolean): nil, string|nil Removes a directory. If fails, returns an error message.
+--- @field exists fun(path: string): boolean Returns true if the path points at an existing entity.
 --- @field check_update fun(): boolean Return true if there is an update available.
+--- @field instances fun(): number|nil, string|nil Return the number of Aseprite instances running.
 --- @field open_repo fun(path?: string): nil, string|nil
 
 --- @class Dmi: table

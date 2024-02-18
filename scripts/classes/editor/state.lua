@@ -5,6 +5,9 @@
 function Editor.new_file(plugin_path)
 	local previous_sprite = app.sprite
 	if app.command.NewFile { width = 32, height = 32 } then
+		loadlib(plugin_path)
+		general_check()
+
 		if previous_sprite ~= app.sprite then
 			local width = app.sprite.width
 			local height = app.sprite.height
@@ -16,21 +19,11 @@ function Editor.new_file(plugin_path)
 				return
 			end
 
-			local check_update_ = false
-
-			if not libdmi then
-				loadlib(plugin_path)
-				check_update_ = true
-			end
-
 			local dmi, error = libdmi.new_file("untitled", width, height, TEMP_DIR)
 			if not error then
-				Editor.new(DIALOG_NAME, nil, dmi, check_update_ and function()
-					check_update()
-				end or nil)
+				Editor.new(DIALOG_NAME, nil, dmi)
 			else
 				app.alert { title = "Error", text = { "Failed to create new file", error } }
-				check_update()
 			end
 		end
 	end
