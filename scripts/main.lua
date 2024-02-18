@@ -189,6 +189,9 @@ function exit(plugin)
 	end
 	if libdmi then
 		libdmi.remove_dir(TEMP_DIR, true)
+		if libdmi.exists(TEMP_DIR) and libdmi.instances() == 1 then
+			libdmi.remove_dir(TEMP_DIR, false)
+		end
 		libdmi = nil
 	end
 end
@@ -211,9 +214,6 @@ function general_check()
 	if not checked then
 		if libdmi.check_update() then
 			update_popup()
-		end
-		if libdmi.exists(TEMP_DIR) and libdmi.instances() == 1 then
-			libdmi.remove_dir(TEMP_DIR, false)
 		end
 		checked = true
 	end
