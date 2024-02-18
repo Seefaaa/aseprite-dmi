@@ -96,6 +96,21 @@ function init(plugin)
 	}
 
 	plugin:newCommand {
+		id = "dmi_expand",
+		title = "Expand",
+		group = "dmi_editor",
+		onclick = function()
+			local state_sprite = is_state_sprite()
+			if state_sprite then
+				state_sprite.editor:expand()
+			end
+		end,
+		onenabled = function()
+			return is_state_sprite() and true or false
+		end,
+	}
+
+	plugin:newCommand {
 		id = "dmi_resize",
 		title = "Resize",
 		group = "dmi_editor",
@@ -182,7 +197,9 @@ end
 --- @param plugin_path string Path where the extension is installed.
 function loadlib(plugin_path)
 	if not libdmi then
-		package.loadlib(app.fs.joinPath(plugin_path, LUA_LIB), "")
+		if app.fs.pathSeparator ~= "/" then
+			package.loadlib(app.fs.joinPath(plugin_path, LUA_LIB), "")
+		end
 		libdmi = package.loadlib(app.fs.joinPath(plugin_path, DMI_LIB), "luaopen_dmi_module")()
 	end
 end

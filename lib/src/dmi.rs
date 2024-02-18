@@ -323,6 +323,13 @@ impl Dmi {
             state.crop(x, y, width, height);
         }
     }
+    pub fn expand(&mut self, x: u32, y: u32, width: u32, height: u32) {
+        self.width = width;
+        self.height = height;
+        for state in self.states.iter_mut() {
+            state.expand(x, y, width, height);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -489,6 +496,13 @@ impl State {
     pub fn crop(&mut self, x: u32, y: u32, width: u32, height: u32) {
         for frame in self.frames.iter_mut() {
             *frame = frame.crop(x, y, width, height);
+        }
+    }
+    pub fn expand(&mut self, x: u32, y: u32, width: u32, height: u32) {
+        for frame in self.frames.iter_mut() {
+            let mut bottom = DynamicImage::new_rgba8(width, height);
+            imageops::replace(&mut bottom, frame, x as i64, y as i64);
+            *frame = bottom;
         }
     }
 }

@@ -114,6 +114,20 @@ fn crop<'lua>(
     Ok(LuaValue::Nil)
 }
 
+fn expand<'lua>(
+    _: &'lua Lua,
+    (dmi, x, y, width, height): (LuaTable, u32, u32, u32, u32),
+) -> LuaResult<LuaValue<'lua>> {
+    let dmi = SerializedDmi::from_lua_table(dmi)?;
+    let temp = dmi.temp.clone();
+
+    let mut dmi = Dmi::from_serialized(dmi)?;
+    dmi.expand(x, y, width, height);
+    dmi.to_serialized(temp, true)?;
+
+    Ok(LuaValue::Nil)
+}
+
 fn remove_dir(_: &Lua, (path, soft): (String, bool)) -> LuaResult<LuaValue> {
     let path = Path::new(&path);
 
@@ -197,6 +211,7 @@ fn dmi_module(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("paste_state", lua.create_function(safe!(paste_state))?)?;
     exports.set("resize", lua.create_function(safe!(resize))?)?;
     exports.set("crop", lua.create_function(safe!(crop))?)?;
+    exports.set("expand", lua.create_function(safe!(expand))?)?;
     exports.set("remove_dir", lua.create_function(safe!(remove_dir))?)?;
     exports.set("exists", lua.create_function(exists)?)?;
     exports.set("check_update", lua.create_function(check_update)?)?;

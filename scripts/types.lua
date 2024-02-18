@@ -795,6 +795,7 @@ WebSocketMessageType = {
 --- @field paste_state fun(width: number, height: number, temp: string): State?, string? Pastes the state from the clipboard. If fails, returns nil and an error message.
 --- @field resize fun(dmi: Dmi, width: number, height: number, medhod: string): nil, string? Resizes the DMI file. If fails, returns an error message.
 --- @field crop fun(dmi: Dmi, x: number, y: number, width: number, height: number): nil, string? Crops the DMI file. If fails, returns an error message.
+--- @field expand fun(dmi: Dmi, x: number, y: number, width: number, height: number): nil, string? Expands the DMI file size. If fails, returns an error message.
 --- @field remove_dir fun(path: string, soft: boolean): nil, string? Removes a directory. If fails, returns an error message.
 --- @field exists fun(path: string): boolean Returns true if the path points at an existing entity.
 --- @field check_update fun(): boolean Return true if there is an update available.
