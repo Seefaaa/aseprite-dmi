@@ -787,18 +787,19 @@ WebSocketMessageType = {
 ---| 'FRAGMENT'
 
 --- @class LibDmi: table
---- @field new_file fun(name: string, width: number, height: number, temp: string): Dmi|nil, string|nil Creates a new DMI file. If fails, returns nil and an error message.
---- @field open_file fun(path: string, temp: string): Dmi|nil, string|nil Opens a DMI file. If fails, returns nil and an error message.
---- @field save_file fun(dmi: Dmi, filename: string): nil, string|nil Saves the DMI file. If fails, returns an error message.
---- @field new_state fun(width: number, height: number, temp: string): State|nil, string|nil Creates a new state. If fails, returns nil and an error message.
---- @field copy_state fun(state: State, temp: string): nil, string|nil Copies the state to the clipboard. If fails, returns an error message.
---- @field paste_state fun(width: number, height: number, temp: string): State|nil, string|nil Pastes the state from the clipboard. If fails, returns nil and an error message.
---- @field resize fun(dmi: Dmi, width: number, height: number, medhod: string): nil, string|nil Resizes the DMI file. If fails, returns an error message.
---- @field remove_dir fun(path: string, soft: boolean): nil, string|nil Removes a directory. If fails, returns an error message.
+--- @field new_file fun(name: string, width: number, height: number, temp: string): Dmi?, string? Creates a new DMI file. If fails, returns nil and an error message.
+--- @field open_file fun(path: string, temp: string): Dmi?, string? Opens a DMI file. If fails, returns nil and an error message.
+--- @field save_file fun(dmi: Dmi, filename: string): nil, string? Saves the DMI file. If fails, returns an error message.
+--- @field new_state fun(width: number, height: number, temp: string): State?, string? Creates a new state. If fails, returns nil and an error message.
+--- @field copy_state fun(state: State, temp: string): nil, string? Copies the state to the clipboard. If fails, returns an error message.
+--- @field paste_state fun(width: number, height: number, temp: string): State?, string? Pastes the state from the clipboard. If fails, returns nil and an error message.
+--- @field resize fun(dmi: Dmi, width: number, height: number, medhod: string): nil, string? Resizes the DMI file. If fails, returns an error message.
+--- @field crop fun(dmi: Dmi, x: number, y: number, width: number, height: number): nil, string? Crops the DMI file. If fails, returns an error message.
+--- @field remove_dir fun(path: string, soft: boolean): nil, string? Removes a directory. If fails, returns an error message.
 --- @field exists fun(path: string): boolean Returns true if the path points at an existing entity.
 --- @field check_update fun(): boolean Return true if there is an update available.
---- @field instances fun(): number|nil, string|nil Return the number of Aseprite instances running.
---- @field open_repo fun(path?: string): nil, string|nil
+--- @field instances fun(): number?, string? Return the number of Aseprite instances running.
+--- @field open_repo fun(path?: string): nil, string?
 
 --- @class Dmi: table
 --- @field name string The name of the DMI file.

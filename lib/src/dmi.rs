@@ -316,6 +316,13 @@ impl Dmi {
             state.resize(width, height, method);
         }
     }
+    pub fn crop(&mut self, x: u32, y: u32, width: u32, height: u32) {
+        self.width = width;
+        self.height = height;
+        for state in self.states.iter_mut() {
+            state.crop(x, y, width, height);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -364,7 +371,7 @@ impl State {
         let frame_key: String;
 
         {
-            let mut index = 1;
+            let mut index = 1u32;
             let mut path = path.join(".bytes");
             loop {
                 let frame_key_ = format!("{}.{}", self.name, index);
@@ -477,6 +484,11 @@ impl State {
     pub fn resize(&mut self, width: u32, height: u32, method: imageops::FilterType) {
         for frame in self.frames.iter_mut() {
             *frame = frame.resize_exact(width, height, method);
+        }
+    }
+    pub fn crop(&mut self, x: u32, y: u32, width: u32, height: u32) {
+        for frame in self.frames.iter_mut() {
+            *frame = frame.crop(x, y, width, height);
         }
     }
 }

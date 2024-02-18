@@ -388,31 +388,31 @@ function Editor:resize()
 	local ratio = original_width / original_height
 
 	local dialog = Dialog {
-		title = "Resize DMI"
+		title = "Resize"
 	}
 
 	dialog:separator { text = "Pixels:" }
 
 	dialog:number {
-		id = "sprite_width",
+		id = "width",
 		focus = true,
 		label = "Width:",
 		text = tostring(original_width),
 		decimals = 0,
 		onchange = function()
-			local width = dialog.data.sprite_width
+			local width = dialog.data.width
 			dialog:modify {
-				id = "sprite_width_percentage",
+				id = "width_percentage",
 				text = tostring(width / original_width * 100)
 			}
-			if dialog.data.sprite_lock then
+			if dialog.data.ratio_lock then
 				local height = math.floor(width / ratio)
 				dialog:modify {
-					id = "sprite_height",
+					id = "height",
 					text = tostring(height)
 				}
 				dialog:modify {
-					id = "sprite_height_percentage",
+					id = "height_percentage",
 					text = tostring(height / original_height * 100)
 				}
 			end
@@ -420,24 +420,24 @@ function Editor:resize()
 	}
 
 	dialog:number {
-		id = "sprite_height",
+		id = "height",
 		label = "Height:",
 		text = tostring(original_height),
 		decimals = 0,
 		onchange = function()
-			local height = dialog.data.sprite_height
+			local height = dialog.data.height
 			dialog:modify {
-				id = "sprite_height_percentage",
+				id = "height_percentage",
 				text = tostring(height / original_height * 100)
 			}
-			if dialog.data.sprite_lock then
+			if dialog.data.ratio_lock then
 				local width = math.floor(height * ratio)
 				dialog:modify {
-					id = "sprite_width",
+					id = "width",
 					text = tostring(width)
 				}
 				dialog:modify {
-					id = "sprite_width_percentage",
+					id = "width_percentage",
 					text = tostring(width / original_width * 100)
 				}
 			end
@@ -445,19 +445,19 @@ function Editor:resize()
 	}
 
 	dialog:check {
-		id = "sprite_lock",
+		id = "ratio_lock",
 		label = "Lock Ratio",
 		selected = true,
 		onclick = function()
-			if dialog.data.sprite_lock then
-				local width = dialog.data.sprite_width
+			if dialog.data.ratio_lock then
+				local width = dialog.data.width
 				local height = math.floor(width / ratio)
 				dialog:modify {
-					id = "sprite_height",
+					id = "height",
 					text = tostring(height)
 				}
 				dialog:modify {
-					id = "sprite_height_percentage",
+					id = "height_percentage",
 					text = tostring(height / original_height * 100)
 				}
 			end
@@ -467,24 +467,24 @@ function Editor:resize()
 	dialog:separator { text = "Percentage:" }
 
 	dialog:number {
-		id = "sprite_width_percentage",
+		id = "width_percentage",
 		label = "Width:",
 		text = "100",
 		onchange = function()
-			local width = dialog.data.sprite_width_percentage
+			local width = dialog.data.width_percentage
 			width = math.floor(width * original_width / 100)
 			dialog:modify {
-				id = "sprite_width",
+				id = "width",
 				text = tostring(width)
 			}
-			if dialog.data.sprite_lock then
+			if dialog.data.ratio_lock then
 				local height = math.floor(width / ratio)
 				dialog:modify {
-					id = "sprite_height",
+					id = "height",
 					text = tostring(height)
 				}
 				dialog:modify {
-					id = "sprite_height_percentage",
+					id = "height_percentage",
 					text = tostring(height / original_height * 100)
 				}
 			end
@@ -492,24 +492,24 @@ function Editor:resize()
 	}
 
 	dialog:number {
-		id = "sprite_height_percentage",
+		id = "height_percentage",
 		label = "Height:",
 		text = "100",
 		onchange = function()
-			local height = dialog.data.sprite_height_percentage
+			local height = dialog.data.height_percentage
 			height = math.floor(height * original_height / 100)
 			dialog:modify {
-				id = "sprite_height",
+				id = "height",
 				text = tostring(height)
 			}
-			if dialog.data.sprite_lock then
+			if dialog.data.ratio_lock then
 				local width = math.floor(height * ratio)
 				dialog:modify {
-					id = "sprite_width",
+					id = "width",
 					text = tostring(width)
 				}
 				dialog:modify {
-					id = "sprite_width_percentage",
+					id = "width_percentage",
 					text = tostring(width / original_width * 100)
 				}
 			end
@@ -519,7 +519,7 @@ function Editor:resize()
 	dialog:separator { text = "Interpolation:" }
 
 	dialog:combobox {
-		id = "sprite_method",
+		id = "method",
 		label = "Method:",
 		option = "Nearest-neighbor",
 		options = { "Nearest-neighbor", "Triangle", "CatmullRom", "Gaussian", "Lanczos3" },
@@ -529,16 +529,16 @@ function Editor:resize()
 		focus = true,
 		text = "&OK",
 		onclick = function()
-			local width = dialog.data.sprite_width
-			local height = dialog.data.sprite_height
-			local method = dialog.data.sprite_method
+			local width = tonumber(dialog.data.width)
+			local height = tonumber(dialog.data.height)
+			local method = dialog.data.method
 
-			if not tonumber(width) and not tonumber(height) then
+			if not width or not height then
 				return
 			end
 
 			if width < 3 or height < 3 then
-				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels", buttons = { "&OK" } }
+				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels" }
 				return
 			end
 
@@ -572,23 +572,9 @@ function Editor:resize()
 			local _, error = libdmi.resize(self.dmi, width, height, method)
 
 			if not error then
-				local open_states = {} --[[@type State[] ]]
-				for _, state_sprite in ipairs(self.open_sprites) do
-					if state_sprite.sprite then
-						state_sprite.sprite:close()
-						table.insert(open_states, state_sprite.state)
-					end
-				end
-
-				self.open_sprites = {}
 				self.dmi.width = width
 				self.dmi.height = height
-				self.image_cache:load_previews(self.dmi)
-				self:repaint_states()
-
-				for _, state in ipairs(open_states) do
-					self:open_state(state)
-				end
+				self:reload_open_states()
 			else
 				app.alert { title = "Error", text = { "Failed to resize", error } }
 			end
@@ -603,4 +589,132 @@ function Editor:resize()
 	}
 
 	dialog:show()
+end
+
+--- Shows a dialog to crop the DMI file.
+function Editor:crop()
+	if not self.dmi then return end
+
+	local original_width = math.floor(self.dmi.width)
+	local original_height = math.floor(self.dmi.height)
+
+	local dialog = Dialog {
+		title = "Crop"
+	}
+
+	dialog:separator { text = "Size:" }
+
+	dialog:number {
+		id = "width",
+		focus = true,
+		label = "Width:",
+		text = tostring(original_width),
+		decimals = 0,
+	}
+
+	dialog:number {
+		id = "height",
+		label = "Height:",
+		text = tostring(original_height),
+		decimals = 0,
+	}
+
+	dialog:separator { text = "Offset:" }
+
+	dialog:number {
+		id = "offset_y",
+		label = "Top:",
+		text = "0",
+		decimals = 0,
+	}
+
+	dialog:number {
+		id = "offset_x",
+		label = "Left:",
+		text = "0",
+		decimals = 0,
+	}
+
+	dialog:button {
+		focus = true,
+		text = "&OK",
+		onclick = function()
+			local width = tonumber(dialog.data.width)
+			local height = tonumber(dialog.data.height)
+			local offset_x = tonumber(dialog.data.offset_x)
+			local offset_y = tonumber(dialog.data.offset_y)
+
+			if not width or not height or not offset_x or not offset_y then
+				return
+			end
+
+			if width < 3 or height < 3 then
+				app.alert { title = "Warning", text = "Width and height must be at least 3 pixels" }
+				return
+			end
+
+			if width >= original_width or height >= original_height then
+				app.alert { title = "Warning", text = "Width and height must be less than the original size" }
+				return
+			end
+
+			if offset_x >= original_width - width or offset_y >= original_height - height then
+				app.alert { title = "Warning", text = "Offset must fit within the size" }
+				return
+			end
+
+			local alert = app.alert {
+				title = "Warning",
+				text = {
+					"Cropping the DMI will re-open all open states",
+					"without saving and this is irreversible. Continue?"
+				},
+				buttons = { "&OK", "&Cancel" }
+			}
+
+			if alert == 2 then
+				return
+			end
+
+			dialog:close()
+
+			local _, error = libdmi.crop(self.dmi, offset_x, offset_y, width, height)
+
+			if not error then
+				self.dmi.width = width
+				self.dmi.height = height
+				self:reload_open_states()
+			else
+				app.alert { title = "Error", text = { "Failed to crop", error } }
+			end
+		end
+	}
+
+	dialog:button {
+		text = "&Cancel",
+		onclick = function()
+			dialog:close()
+		end
+	}
+
+	dialog:show()
+end
+
+--- Reloads all open states in the editor.
+function Editor:reload_open_states()
+	local open_states = {} --[[@type State[] ]]
+	for _, state_sprite in ipairs(self.open_sprites) do
+		if state_sprite.sprite then
+			state_sprite.sprite:close()
+			table.insert(open_states, state_sprite.state)
+		end
+	end
+
+	self.open_sprites = {}
+	self.image_cache:load_previews(self.dmi)
+	self:repaint_states()
+
+	for _, state in ipairs(open_states) do
+		self:open_state(state)
+	end
 end

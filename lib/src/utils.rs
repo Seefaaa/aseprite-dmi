@@ -46,13 +46,13 @@ where
     let mut path = Path::new(&path).to_path_buf();
     let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
 
-    let mut index: u32 = 0;
+    let mut index = 1u32;
     loop {
-        index += 1;
-        path.set_file_name(format!("{}.{}", file_name, index));
+        path.set_file_name(format!("{file_name}.{index}"));
         if !path.exists() {
             break;
         }
+        index += 1;
     }
 
     path

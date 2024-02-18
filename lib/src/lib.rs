@@ -100,6 +100,20 @@ fn resize<'lua>(
     Ok(LuaValue::Nil)
 }
 
+fn crop<'lua>(
+    _: &'lua Lua,
+    (dmi, x, y, width, height): (LuaTable, u32, u32, u32, u32),
+) -> LuaResult<LuaValue<'lua>> {
+    let dmi = SerializedDmi::from_lua_table(dmi)?;
+    let temp = dmi.temp.clone();
+
+    let mut dmi = Dmi::from_serialized(dmi)?;
+    dmi.crop(x, y, width, height);
+    dmi.to_serialized(temp, true)?;
+
+    Ok(LuaValue::Nil)
+}
+
 fn remove_dir(_: &Lua, (path, soft): (String, bool)) -> LuaResult<LuaValue> {
     let path = Path::new(&path);
 
@@ -112,6 +126,21 @@ fn remove_dir(_: &Lua, (path, soft): (String, bool)) -> LuaResult<LuaValue> {
     }
 
     Ok(LuaValue::Nil)
+}
+
+fn exists(_: &Lua, path: String) -> LuaResult<bool> {
+    let path = Path::new(&path);
+
+    Ok(path.exists())
+}
+
+fn instances(_: &Lua, _: ()) -> LuaResult<usize> {
+    let mut system = sysinfo::System::new();
+    let refresh_kind =
+        sysinfo::ProcessRefreshKind::new().with_exe(sysinfo::UpdateKind::OnlyIfNotSet);
+    system.refresh_processes_specifics(refresh_kind);
+
+    Ok(system.processes_by_name("aseprite").count())
 }
 
 fn check_update(_: &Lua, (): ()) -> LuaResult<bool> {
@@ -134,21 +163,6 @@ fn open_repo(_: &Lua, path: Option<String>) -> LuaResult<LuaValue> {
     Ok(LuaValue::Nil)
 }
 
-fn exists(_: &Lua, path: String) -> LuaResult<bool> {
-    let path = Path::new(&path);
-
-    Ok(path.exists())
-}
-
-fn instances(_: &Lua, _: ()) -> LuaResult<usize> {
-    let mut system = sysinfo::System::new();
-    let refresh_kind =
-        sysinfo::ProcessRefreshKind::new().with_exe(sysinfo::UpdateKind::OnlyIfNotSet);
-    system.refresh_processes_specifics(refresh_kind);
-
-    Ok(system.processes_by_name("aseprite").count())
-}
-
 fn safe_lua_function<'lua, A, R, F>(
     lua: &'lua Lua,
     func: F,
@@ -159,9 +173,7 @@ where
     R: IntoLuaMulti<'lua>,
     F: Fn(&'lua Lua, A) -> LuaResult<R>,
 {
-    let result = func(lua, multi);
-
-    match result {
+    match func(lua, multi) {
         Ok(r) => Ok((Some(r), None)),
         Err(err) => Ok((None, Some(err.to_string()))),
     }
@@ -184,6 +196,7 @@ fn dmi_module(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("copy_state", lua.create_function(safe!(copy_state))?)?;
     exports.set("paste_state", lua.create_function(safe!(paste_state))?)?;
     exports.set("resize", lua.create_function(safe!(resize))?)?;
+    exports.set("crop", lua.create_function(safe!(crop))?)?;
     exports.set("remove_dir", lua.create_function(safe!(remove_dir))?)?;
     exports.set("exists", lua.create_function(exists)?)?;
     exports.set("check_update", lua.create_function(check_update)?)?;

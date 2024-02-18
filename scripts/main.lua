@@ -110,6 +110,21 @@ function init(plugin)
 		end,
 	}
 
+	plugin:newCommand {
+		id = "dmi_crop",
+		title = "Crop",
+		group = "dmi_editor",
+		onclick = function()
+			local state_sprite = is_state_sprite()
+			if state_sprite then
+				state_sprite.editor:crop()
+			end
+		end,
+		onenabled = function()
+			return is_state_sprite() and true or false
+		end,
+	}
+
 	plugin:newMenuSeparator {
 		group = "dmi_editor",
 	}
