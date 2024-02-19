@@ -546,6 +546,7 @@ type DmiResult<T> = Result<T, DmiError>;
 #[derive(Error, Debug)]
 #[error(transparent)]
 pub enum DmiError {
+    Anyhow(#[from] anyhow::Error),
     Io(#[from] std::io::Error),
     Image(#[from] image::ImageError),
     PngDecoding(#[from] png::DecodingError),
@@ -553,7 +554,6 @@ pub enum DmiError {
     ParseInt(#[from] std::num::ParseIntError),
     ParseFloat(#[from] std::num::ParseFloatError),
     DecodeError(#[from] base64::DecodeError),
-    ToBase64(#[from] crate::utils::ToBase64Error),
     #[error("Missing data")]
     MissingData,
     #[error("Missing ZTXT chunk")]

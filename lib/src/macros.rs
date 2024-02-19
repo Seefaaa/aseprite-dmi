@@ -16,9 +16,10 @@ where
     }
 }
 
-#[macro_export]
 macro_rules! safe {
     ($func:ident) => {
         |lua, args| $crate::macros::safe_lua_function(lua, $func, args)
     };
 }
+
+pub(crate) use safe;

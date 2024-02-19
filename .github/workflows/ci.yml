@@ -19,11 +19,15 @@ jobs:
       - name: Run clippy
         working-directory: lib
         run: |
-          cargo clippy --target ${{ env.rust-target }} --all-features --locked -- -D warnings
+          cargo clippy --target ${{ env.rust-target }} --locked -- -D warnings
       - name: Run rustfmt
         working-directory: lib
         run: |
           cargo fmt -- --check
+      - name: Run tests
+        working-directory: lib
+        run: |
+          cargo test --target ${{ env.rust-target }} --locked
       - name: Run build
         working-directory: lib
         run: |

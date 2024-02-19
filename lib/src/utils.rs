@@ -1,4 +1,4 @@
-use anyhow::Context as _;
+use anyhow::{Context as _, Result};
 use base64::{engine::general_purpose, Engine as _};
 use image::DynamicImage;
 use png::{Compression, Encoder};
@@ -7,16 +7,8 @@ use std::ffi::OsStr;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-#[error(transparent)]
-pub enum ToBase64Error {
-    Image(#[from] image::ImageError),
-    PngEncoding(#[from] png::EncodingError),
-}
-
-pub fn image_to_base64(image: &DynamicImage) -> Result<String, ToBase64Error> {
+pub fn image_to_base64(image: &DynamicImage) -> Result<String> {
     let mut image_data = Vec::new();
 
     {
@@ -72,7 +64,7 @@ pub fn optimal_size(frames: usize, width: u32, height: u32) -> (f32, u32, u32) {
     (sqrt, width, height)
 }
 
-pub fn check_latest_release() -> Result<bool, Box<dyn std::error::Error>> {
+pub fn check_latest_release() -> Result<bool> {
     let current_version = env!("CARGO_PKG_VERSION");
     let repository = env!("CARGO_PKG_REPOSITORY");
 
