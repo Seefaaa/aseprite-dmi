@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import os
 import shutil
 import subprocess
@@ -53,7 +54,7 @@ else:
     library_extension = ".so"
     library_prefix = "lib"
 
-library_source = os.path.join("lib", "target", TARGET, f"{LIBRARY_NAME}{library_extension}")
+library_source = os.path.join("lib", "target", TARGET, f"{library_prefix}{LIBRARY_NAME}{library_extension}")
 
 if not os.path.exists(library_source):
     print("Error: lib was not built. Please check for errors.")
