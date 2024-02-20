@@ -1,4 +1,5 @@
 use mlua::prelude::*;
+use native_dialog::FileDialog;
 use std::fs::{self, read_dir, remove_dir_all};
 use std::path::Path;
 
@@ -25,6 +26,7 @@ fn module(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("check_update", lua.create_function(check_update)?)?;
     exports.set("open_repo", lua.create_function(safe!(open_repo))?)?;
     exports.set("instances", lua.create_function(instances)?)?;
+    exports.set("save_dialog", lua.create_function(safe!(save_dialog))?)?;
 
     Ok(exports)
 }
@@ -63,7 +65,7 @@ fn new_state(lua: &Lua, (width, height, temp): (u32, u32, String)) -> LuaResult<
         Err("Temp directory does not exist".to_string()).into_lua_err()?
     }
 
-    let state = State::new_blank(String::default(), width, height).to_serialized(temp)?;
+    let state = State::new_blank(String::new(), width, height).to_serialized(temp)?;
     let table = state.into_lua_table(lua)?;
 
     Ok(table)
@@ -167,6 +169,25 @@ fn exists(_: &Lua, path: String) -> LuaResult<bool> {
     let path = Path::new(&path);
 
     Ok(path.exists())
+}
+
+fn save_dialog(
+    _: &Lua,
+    (title, filename, location): (String, String, String),
+) -> LuaResult<String> {
+    let dialog = FileDialog::new()
+        .set_title(&title)
+        .set_filename(&filename)
+        .set_location(&location)
+        .add_filter("dmi files", &["dmi"]);
+
+    if let Ok(Some(file)) = dialog.show_save_single_file() {
+        if let Some(file) = file.to_str() {
+            return Ok(file.to_string());
+        }
+    }
+
+    Ok(String::new())
 }
 
 fn instances(_: &Lua, _: ()) -> LuaResult<usize> {

@@ -112,7 +112,7 @@ impl Dmi {
         Ok(())
     }
     pub fn get_metadata(&self) -> String {
-        let mut string = String::default();
+        let mut string = String::new();
         string.push_str("# BEGIN DMI\n");
         string.push_str(format!("version = {}\n", DMI_VERSION).as_str());
         string.push_str(format!("\twidth = {}\n", self.width).as_str());

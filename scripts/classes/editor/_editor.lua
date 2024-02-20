@@ -136,10 +136,10 @@ function Editor:save_warning()
 		text = "&Save",
 		focus = true,
 		onclick = function()
-			self:save(function()
+			if self:save() then
 				result = 1
 				dialog:close()
-			end)
+			end
 		end
 	}
 
@@ -276,67 +276,21 @@ end
 --- Saves the current DMI file.
 --- If the DMI file is not set, the function returns without doing anything.
 --- Displays a success or failure message using the Aseprite app.alert function.
---- @param on_save? fun() The callback function to be called after the save button is clicked.
---- @param bounds? Rectangle The bounds of the dialog.
-function Editor:save(on_save, bounds)
+--- @return boolean success Whether the DMI file has been saved. May still return true even if the file has not been saved successfully.
+function Editor:save()
 	if not self.dmi then return false end
 
-	local context = nil --[[@type GraphicsContext|nil]]
-
-	local dialog = Dialog {
-		title = "Save File",
-	}
-
-	dialog:file {
-		id = "save_dmi_file",
-		save = true,
-		filetypes = { "dmi" },
-		filename = self:path(),
-		onchange = function()
-			self.save_path = dialog.data.save_dmi_file
-
-			local bounds = dialog.bounds
-			local width = context --[[@as GraphicsContext]]:measureText(self.save_path).width + 20
-
-			dialog:close()
-			self:save(on_save, Rectangle(bounds.x + (bounds.width - width) / 2, bounds.y, width, bounds.height))
-		end,
-	}
-
-	dialog:label {
-		focus = true,
-		text = dialog.data.save_dmi_file
-	}
-
-	dialog:canvas { height = 1, onpaint = function(ev) context = ev.context end }
-
-	dialog:button {
-		text = "&Save",
-		focus = true,
-		onclick = function()
-			if on_save then
-				on_save()
-			end
-			dialog:close()
-			local _, error = libdmi.save_file(self.dmi, dialog.data.save_dmi_file)
-			if not error then
-				self.modified = false
-			end
+	local path = self:path()
+	local filename, error = libdmi.save_dialog("Save File", app.fs.fileTitle(path), app.fs.filePath(path))
+	if #filename > 0 and not error then
+		self.save_path = filename
+		local _, error = libdmi.save_file(self.dmi, filename --[[@as string]])
+		if not error then
+			self.modified = false
 		end
-	}
-
-	dialog:button {
-		text = "&Cancel",
-		onclick = function()
-			dialog:close()
-		end
-	}
-
-	if bounds then
-		dialog:show { bounds = bounds }
-	else
-		dialog:show()
+		return true
 	end
+	return false
 end
 
 --- Returns the path of the file to be saved.

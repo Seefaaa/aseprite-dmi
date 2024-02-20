@@ -810,7 +810,8 @@ WebSocketMessageType = {
 --- @field exists fun(path: string): boolean Returns true if the path points at an existing entity.
 --- @field check_update fun(): boolean Return true if there is an update available.
 --- @field instances fun(): number?, string? Return the number of Aseprite instances running.
---- @field open_repo fun(path?: string): nil, string?
+--- @field save_dialog fun(title: string, filename: string, location: string): string?, string? Shows a save dialog. Returns the path of the file to save or empty string if the user cancels the dialog.
+--- @field open_repo fun(path?: string): nil, string? Opens the repository in the default browser. If fails, returns an error message.
 
 --- @class Dmi: table
 --- @field name string The name of the DMI file.
