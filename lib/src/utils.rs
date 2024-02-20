@@ -75,7 +75,7 @@ pub fn check_latest_release() -> Result<bool> {
 
     let client = reqwest::blocking::Client::builder()
         .user_agent(user_agent)
-        .timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(3))
         .build()?;
 
     let url = format!("https://api.github.com/repos/{repository}/releases/latest");
@@ -88,15 +88,15 @@ pub fn check_latest_release() -> Result<bool> {
     Ok(compare_versions(current_version, latest_version) != Ordering::Less)
 }
 
-fn compare_versions(version1: &str, version2: &str) -> Ordering {
-    let v1: Vec<u32> = version1
+fn compare_versions(v1: &str, v2: &str) -> Ordering {
+    let v1 = v1
         .split('.')
-        .map(|s| s.parse().unwrap_or(0))
-        .collect();
-    let v2: Vec<u32> = version2
+        .map(|s| s.parse().unwrap_or(0u8))
+        .collect::<Vec<_>>();
+    let v2 = v2
         .split('.')
-        .map(|s| s.parse().unwrap_or(0))
-        .collect();
+        .map(|s| s.parse().unwrap_or(0u8))
+        .collect::<Vec<_>>();
 
     v1.cmp(&v2)
 }
