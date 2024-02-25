@@ -9,7 +9,7 @@ name = "dmi"
 crate-type = ["cdylib", "lib"]
 
 [dependencies]
-anyhow = "1.0.79"
+anyhow = "1.0.80"
 arboard = "3.3.1"
 base64 = "0.21.5"
 image = { version = "0.24.7", default-features = false, features = ["png"] }
