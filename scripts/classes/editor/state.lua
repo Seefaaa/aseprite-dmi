@@ -17,11 +17,10 @@ function Editor.new_file(plugin_path)
 			end
 
 			loadlib(plugin_path)
-			general_check()
 
 			local dmi, error = libdmi.new_file("untitled", width, height, TEMP_DIR)
 			if not error then
-				Editor.new(DIALOG_NAME, nil, dmi)
+				Editor.new(DIALOG_NAME, dmi --[[@as Dmi]])
 			else
 				app.alert { title = "Error", text = { "Failed to create new file", error } }
 			end

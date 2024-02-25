@@ -37,9 +37,8 @@ function init(plugin)
 				app.command.CloseFile { ui = false }
 
 				loadlib(plugin.path)
-				general_check()
 
-				Editor.new(DIALOG_NAME, filename, nil)
+				Editor.new(DIALOG_NAME, filename)
 			end
 		elseif ev.name == "Exit" then
 			exiting = true
@@ -204,18 +203,14 @@ function loadlib(plugin_path)
 			package.loadlib(app.fs.joinPath(plugin_path, LUA_LIB), "")
 		end
 		libdmi = package.loadlib(app.fs.joinPath(plugin_path, DMI_LIB), "luaopen_dmi_module")()
+		general_check()
 	end
 end
 
-local checked = false
-
 --- General checks.
 function general_check()
-	if not checked then
-		if libdmi.check_update() then
-			update_popup()
-		end
-		checked = true
+	if libdmi.check_update() then
+		update_popup()
 	end
 end
 

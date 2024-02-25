@@ -33,11 +33,12 @@ Editor.__index = Editor
 
 --- Creates a new instance of the Editor class.
 --- @param title string The title of the editor.
---- @param filename? string The path of the file to be processed.
---- @param dmi? Dmi The DMI object to be opened if not passed `filename` or `Editor.open_path` will be used.
+--- @param dmi string|Dmi The path of the file to be opened or the Dmi object to be opened.
 --- @return Editor editor  The newly created Editor instance.
-function Editor.new(title, filename, dmi)
+function Editor.new(title, dmi)
 	local self            = setmetatable({}, Editor)
+
+	local is_filename     = type(dmi) == "string"
 
 	self.title            = title
 	self.focused_widget   = nil
@@ -49,14 +50,14 @@ function Editor.new(title, filename, dmi)
 	self.widgets          = {}
 	self.context_widget   = nil
 	self.save_path        = nil
-	self.open_path        = filename or nil
+	self.open_path        = is_filename and dmi --[[@as string]] or nil
 
 	self.canvas_width     = 185
 	self.canvas_height    = 215
 	self.max_in_a_row     = 1
 	self.max_in_a_column  = 1
 
-	self.loading          = false
+	self.loading          = true
 	self.modified         = false
 
 	self.image_cache      = ImageCache.new()
@@ -66,20 +67,9 @@ function Editor.new(title, filename, dmi)
 	self.aftercommand     = app.events:on("aftercommand", function(ev) self:onaftercommand(ev) end)
 
 	self:new_dialog(title)
+	self:show()
 
-	if filename then
-		self.loading = true
-		self.dialog:repaint()
-		self:show()
-		self:open_file(nil)
-	elseif dmi then
-		self.loading = true
-		self.dialog:repaint()
-		self:show()
-		self:open_file(dmi)
-	else
-		error("No filename or dmi passed")
-	end
+	self:open_file(not is_filename and dmi --[[@as Dmi]] or nil)
 
 	table.insert(open_editors, self)
 
@@ -349,7 +339,7 @@ end
 function Editor:gc_open_sprites()
 	local open_sprites = {} --[[@type StateSprite[] ]]
 	for _, state_sprite in ipairs(self.open_sprites) do
-		if Editor.is_sprite_open(state_sprite.sprite) then
+		if self.is_sprite_open(state_sprite.sprite) then
 			table.insert(open_sprites, state_sprite)
 		end
 	end
@@ -370,12 +360,13 @@ end
 --- Checks if the DMI file has been modified.
 --- @return boolean modified Whether the DMI file has been modified.
 function Editor:is_modified()
+	if self.modified then return true end
 	for _, state_sprite in ipairs(self.open_sprites) do
 		if state_sprite.sprite.isModified then
 			return true
 		end
 	end
-	return self.modified
+	return false
 end
 
 --- Checks if the sprite is open in the Aseprite editor.

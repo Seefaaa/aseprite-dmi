@@ -13,16 +13,16 @@ end
 function Editor:onpaint(ctx)
 	if self.loading then
 		local size = ctx:measureText("Loading file...")
-		ctx.color = app.theme.color["button_normal_text"]
-		ctx:fillText("Loading file...", ctx.width / 2 - size.width / 2, ctx.height / 2 - size.height / 2)
+		ctx.color = app.theme.color.text
+		ctx:fillText("Loading file...", (ctx.width - size.width) / 2, (ctx.height - size.height) / 2)
 		return
 	end
 
 	local min_width = self.dmi and (self.dmi.width + BOX_PADDING) or 1
 	local min_height = self.dmi and (self.dmi.height + BOX_BORDER + BOX_PADDING * 2 + TEXT_HEIGHT) or 1
 
-	self.canvas_width = ctx.width > min_width and ctx.width or min_width
-	self.canvas_height = ctx.height > min_height and ctx.height or min_height
+	self.canvas_width = math.max(ctx.width, min_width)
+	self.canvas_height = math.max(ctx.height, min_height)
 
 	if TEXT_HEIGHT == 0 then
 		TEXT_HEIGHT = ctx:measureText("A").height
@@ -36,71 +36,65 @@ function Editor:onpaint(ctx)
 	local max_column = self.dmi and math.floor(self.canvas_height / min_height) or 1
 
 	if max_row ~= self.max_in_a_row or max_column ~= self.max_in_a_column then
-		self.max_in_a_row = max_row > 0 and max_row or 1
-		self.max_in_a_column = max_column > 0 and max_column or 1
+		self.max_in_a_row = math.max(max_row, 1)
+		self.max_in_a_column = math.max(max_column, 1)
 		self:repaint_states()
 		return
 	end
 
 	local hovers = {} --[[ @as (string)[] ]]
 	for _, widget in ipairs(self.widgets) do
-		if widget and widget.state then
-			local state = widget.state.normal
+		local state = COMMON_STATE.normal
 
-			if widget == self.focused_widget then
-				state = widget.state.focused or state
+		if widget == self.focused_widget then
+			state = COMMON_STATE.focused or state
+		end
+
+		local is_mouse_over = not self.context_widget and widget.bounds:contains(self.mouse.position)
+
+		if is_mouse_over then
+			state = COMMON_STATE.hot or state
+
+			if self.mouse.leftClick then
+				state = COMMON_STATE.selected or state
 			end
+		end
 
-			local is_mouse_over = not self.context_widget and widget.bounds:contains(self.mouse.position)
+		if widget.type == "IconWidget" then
+			local widget = widget --[[ @as IconWidget ]]
 
-			if is_mouse_over then
-				state = widget.state.hot or state
+			ctx:drawThemeRect(state.part, widget.bounds)
+			ctx:drawImage(
+				widget.icon,
+				widget.icon.bounds,
+				Rectangle(widget.bounds.x + (widget.bounds.width - self.dmi.width) / 2,
+					widget.bounds.y + (widget.bounds.height - self.dmi.height) / 2, widget.icon.bounds.width,
+					widget.icon.bounds.height)
+			)
+		elseif widget.type == "TextWidget" then
+			local widget = widget --[[ @as TextWidget ]]
 
-				if self.mouse.leftClick then
-					state = widget.state.selected or state
-				end
+			local text = self.fit_text(widget.text, ctx, widget.bounds.width)
+			local size = ctx:measureText(text)
+
+			ctx.color = widget.text_color or app.theme.color[state.color]
+			ctx:fillText(
+				text,
+				widget.bounds.x + (widget.bounds.width - size.width) / 2,
+				widget.bounds.y + (widget.bounds.height - size.height) / 2
+			)
+
+			if is_mouse_over and widget.hover_text then
+				table.insert(hovers, widget.hover_text)
 			end
+		elseif widget.type == "ThemeWidget" then
+			local widget = widget --[[ @as ThemeWidget ]]
 
-			if widget.type == "IconWidget" then
-				local widget = widget --[[ @as IconWidget ]]
+			ctx:drawThemeRect(state.part, widget.bounds)
 
-				ctx:drawThemeRect(state.part, widget.bounds)
-				ctx:drawImage(
-					widget.icon,
-					widget.icon.bounds,
-					Rectangle((widget.bounds.x + widget.bounds.width / 2) - self.dmi.width / 2,
-						(widget.bounds.y + widget.bounds.height / 2) - self.dmi.height / 2, widget.icon.bounds.width,
-						widget.icon.bounds.height)
-				)
-			elseif widget.type == "TextWidget" then
-				local widget = widget --[[ @as TextWidget ]]
-				local text = self.fit_text(widget.text, ctx, widget.bounds.width)
-				local size = ctx:measureText(text)
-
-				ctx.color = widget.text_color or app.theme.color[state.color]
-				ctx:fillText(
-					text,
-					widget.bounds.x + widget.bounds.width / 2 - size.width / 2,
-					widget.bounds.y + widget.bounds.height / 2 - size.height / 2
-				)
-
-				if is_mouse_over and widget.hover_text then
-					table.insert(hovers, widget.hover_text)
-				end
-			elseif widget.type == "ThemeWidget" then
-				local widget = widget --[[ @as ThemeWidget ]]
-				ctx:drawThemeRect(state.part, widget.bounds)
-
-				local center = Point(
-					widget.bounds.x + widget.bounds.width / 2,
-					widget.bounds.y + widget.bounds.height / 2
-				)
-
-				if widget.partId then
-					ctx:drawThemeImage(widget.partId,
-						Rectangle(center.x - widget.bounds.width / 2, center.y - widget.bounds.height / 2, widget.bounds.width,
-							widget.bounds.height))
-				end
+			if widget.partId then
+				ctx:drawThemeImage(widget.partId,
+					Rectangle(widget.bounds.x, widget.bounds.y, widget.bounds.width, widget.bounds.height))
 			end
 		end
 	end
@@ -133,7 +127,7 @@ function Editor:onpaint(ctx)
 			widget.drawn = true
 		end
 
-		ctx.color = app.theme.color["button_normal_text"]
+		ctx.color = app.theme.color.button_normal_text
 		ctx:drawThemeRect("sunken_normal", widget.bounds)
 
 		for i, button in ipairs(widget.buttons) do
@@ -142,9 +136,9 @@ function Editor:onpaint(ctx)
 				CONTEXT_BUTTON_HEIGHT)
 			local contains_mouse = button_bounds:contains(self.mouse.position)
 
-			ctx.color = app.theme.color["button_normal_text"]
+			ctx.color = app.theme.color.button_normal_text
 			if contains_mouse then
-				ctx.color = app.theme.color["button_hot_text"]
+				ctx.color = app.theme.color.button_hot_text
 				ctx:drawThemeRect(
 					contains_mouse and "sunken_focused" or "sunken_normal", button_bounds)
 			end
@@ -166,9 +160,9 @@ function Editor:onpaint(ctx)
 			x = ctx.width - size.width
 		end
 
-		ctx.color = app.theme.color["button_normal_text"]
+		ctx.color = app.theme.color.button_normal_text
 		ctx:drawThemeRect("sunken_normal", Rectangle(x, self.mouse.position.y - size.height, size.width, size.height))
-		ctx:fillText(text, x + BOX_PADDING, self.mouse.position.y - text_size.height / 2 - size.height / 2)
+		ctx:fillText(text, x + BOX_PADDING, self.mouse.position.y - (text_size.height + size.height) / 2)
 	end
 end
 
@@ -213,10 +207,6 @@ function Editor:repaint_states()
 			table.insert(self.widgets, IconWidget.new(
 				self,
 				bounds,
-				{
-					normal = { part = "sunken_normal", color = "button_normal_text" },
-					hot = { part = "sunken_focused", color = "button_hot_text" },
-				},
 				icon,
 				function() self:open_state(state) end,
 				function(ev) self:state_context(state, ev) end
@@ -230,10 +220,6 @@ function Editor:repaint_states()
 					bounds.width,
 					TEXT_HEIGHT
 				),
-				{
-					normal = { part = "sunken_normal", color = "button_normal_text" },
-					hot = { part = "sunken_focused", color = "button_hot_text" },
-				},
 				name,
 				text_color,
 				name,
@@ -249,10 +235,6 @@ function Editor:repaint_states()
 	table.insert(self.widgets, ThemeWidget.new(
 		self,
 		bounds,
-		{
-			normal = { part = "sunken_normal", color = "button_normal_text" },
-			hot = { part = "sunken_focused", color = "button_hot_text" },
-		},
 		nil,
 		function() self:new_state() end
 	))
@@ -266,10 +248,6 @@ function Editor:repaint_states()
 				bounds.width,
 				TEXT_HEIGHT
 			),
-			{
-				normal = { part = "sunken_normal", color = "button_normal_text" },
-				hot = { part = "sunken_focused", color = "button_hot_text" },
-			},
 			"+"
 		))
 	end
@@ -418,11 +396,11 @@ end
 --- Handles the mouse wheel event for scrolling through DMI states.
 --- @param ev table The mouse wheel event object.
 function Editor:onwheel(ev)
-	if not self.dmi or not self.dmi.states then return end
+	if not self.dmi then return end
 
 	local overflow = (#self.dmi.states + 1) - self.max_in_a_row * self.max_in_a_column
 
-	if not (overflow > 0) then return end
+	if overflow <= 0 then return end
 
 	local last_digit = overflow % self.max_in_a_row
 	local rounded = overflow - last_digit
