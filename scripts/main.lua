@@ -200,7 +200,9 @@ end
 function loadlib(plugin_path)
 	if not libdmi then
 		if app.fs.pathSeparator ~= "/" then
-			package.loadlib(app.fs.joinPath(plugin_path, LUA_LIB), "")
+			package.loadlib(app.fs.joinPath(plugin_path, LUA_LIB --[[@as string]]), "")
+		else
+			package.cpath = package.cpath .. ";?.dylib"
 		end
 		libdmi = package.loadlib(app.fs.joinPath(plugin_path, DMI_LIB), "luaopen_dmi_module")()
 		general_check()

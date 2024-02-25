@@ -117,7 +117,7 @@ function Editor:save_warning()
 	dialog:newrow()
 
 	dialog:label {
-		text = '"' .. file_name(self:path()) .. '" before closing?',
+		text = '"' .. app.fs.fileName(self:path()) .. '" before closing?',
 	}
 
 	dialog:canvas { height = 1 }

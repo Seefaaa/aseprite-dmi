@@ -7,7 +7,7 @@ import zipfile
 EXTENSION_NAME = "aseprite-dmi"
 LIBRARY_NAME = "dmi"
 TARGET = "debug"
-SKIP = False
+CI = False
 
 import sys
 args = sys.argv[1:]
@@ -17,8 +17,8 @@ if "--release" in args:
 elif "--ci" in args:
     try:
         index = args.index("--ci")
-        TARGET = args[index + 1] + "\\release"
-        SKIP = True
+        TARGET = args[index + 1]
+        CI = True
     except IndexError:
         print("Error: Please provide a target name after --ci flag.")
         sys.exit(1)
@@ -26,7 +26,7 @@ elif "--ci" in args:
 working_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 os.chdir(working_dir)
 
-if not SKIP:
+if not CI:
     try:
         rust_version_output = subprocess.check_output(["rustc", "--version"]).decode()
     except FileNotFoundError:
@@ -50,11 +50,14 @@ win = sys.platform.startswith('win')
 if win:
     library_extension = ".dll"
     library_prefix = ""
+elif sys.platform.startswith('darwin'):
+    library_extension = ".dylib"
+    library_prefix = "lib"
 else:
     library_extension = ".so"
     library_prefix = "lib"
 
-library_source = os.path.join("lib", "target", TARGET, f"{library_prefix}{LIBRARY_NAME}{library_extension}")
+library_source = os.path.join("lib", "target", TARGET if not CI else os.path.join(TARGET, "release"), f"{library_prefix}{LIBRARY_NAME}{library_extension}")
 
 if not os.path.exists(library_source):
     print("Error: lib was not built. Please check for errors.")
@@ -79,13 +82,23 @@ if win:
 
 shutil.copytree(os.path.join("scripts"), os.path.join(unzipped_dir, "scripts"))
 
-zip_path = os.path.join(dist_dir, f"{EXTENSION_NAME}.zip")
+if CI:
+    if TARGET.find("windows") != -1:
+        target_name = "-windows"
+    elif TARGET.find("linux") != -1:
+        target_name = "-linux"
+    elif TARGET.find("darwin") != -1:
+        target_name = "-macos"
+else:
+    target_name = ""
+
+zip_path = os.path.join(dist_dir, f"{EXTENSION_NAME}{target_name}.zip")
 with zipfile.ZipFile(zip_path, "w") as zipf:
     for root, dirs, files in os.walk(unzipped_dir):
         for file in files:
             zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), unzipped_dir))
 
-extension_path = os.path.join(dist_dir, f"{EXTENSION_NAME}.aseprite-extension")
+extension_path = os.path.join(dist_dir, f"{EXTENSION_NAME}{target_name}.aseprite-extension")
 if os.path.exists(extension_path):
     os.remove(extension_path)
 

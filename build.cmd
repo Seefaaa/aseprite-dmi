@@ -10,18 +10,18 @@ IF %ERRORLEVEL% EQU 0 (
 SET EXTENSION_NAME=aseprite-dmi
 SET LIBRARY_NAME=dmi
 SET TARGET=debug
-SET SKIP=0
+SET CI=0
 
 IF "%~1"=="--release" (
 	SET TARGET=release
 )
 
 IF "%~1"=="--ci" (
-	SET TARGET=%~2\release
-	SET SKIP=1
+	SET TARGET=%~2
+	SET CI=1
 )
 
-IF %SKIP% EQU 0 (
+IF %CI% EQU 0 (
 	rustc --version 1>nul
 	IF %ERRORLEVEL% NEQ 0 (
 		echo "Rust is not installed."
@@ -40,7 +40,13 @@ IF %SKIP% EQU 0 (
 	)
 )
 
-IF NOT EXIST lib\target\%TARGET%\%LIBRARY_NAME%.dll (
+IF %CI% EQU 0 (
+	SET LIBRARY_SOURCE=lib\target\%TARGET%\%LIBRARY_NAME%.dll
+) ELSE (
+	SET LIBRARY_SOURCE=lib\target\%TARGET%\release\%LIBRARY_NAME%.dll
+)
+
+IF NOT EXIST %LIBRARY_SOURCE% (
 	echo "lib was not built. Please check for errors."
 	exit /b 1
 )
@@ -56,14 +62,20 @@ copy package.json dist\unzipped
 copy LICENSE dist\unzipped
 copy README.md dist\unzipped
 copy lua54.dll dist\unzipped
-copy lib\target\%TARGET%\%LIBRARY_NAME%.dll dist\unzipped
+copy %LIBRARY_SOURCE% dist\unzipped
 
 xcopy /E scripts\ dist\unzipped\scripts\
 
-powershell Compress-Archive -Path "dist\unzipped\*" -DestinationPath "dist\%EXTENSION_NAME%.zip" -Force
-
-IF EXIST dist\%EXTENSION_NAME%.aseprite-extension (
-	del dist\%EXTENSION_NAME%.aseprite-extension
+IF %CI% EQU 1 (
+	SET TARGET_NAME=-windows
+) ELSE (
+	SET TARGET_NAME=
 )
 
-copy dist\%EXTENSION_NAME%.zip dist\%EXTENSION_NAME%.aseprite-extension
+powershell Compress-Archive -Path "dist\unzipped\*" -DestinationPath "dist\%EXTENSION_NAME%%TARGET_NAME%.zip" -Force
+
+IF EXIST dist\%EXTENSION_NAME%%TARGET_NAME%.aseprite-extension (
+	del dist\%EXTENSION_NAME%%TARGET_NAME%.aseprite-extension
+)
+
+copy dist\%EXTENSION_NAME%%TARGET_NAME%.zip dist\%EXTENSION_NAME%%TARGET_NAME%.aseprite-extension

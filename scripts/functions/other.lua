@@ -15,13 +15,6 @@ function transparent_color(image)
 	return Color(0)
 end
 
---- Returns the name of the file from the given path.
---- @param path string The path to the file.
---- @return string name The name of the file.
-function file_name(path)
-	return path:match("^.+[\\/](.+)$")
-end
-
 --- Function to load image from bytes file.
 --- Thanks to `Astropulse` for sharing [this](https://community.aseprite.org/t/loading-ui-images-for-graphicscontext-elements-at-lightning-speed/21128) article.
 --- @param file string The path to the file.
