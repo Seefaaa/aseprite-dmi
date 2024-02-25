@@ -4,9 +4,25 @@ on:
     branches:
       - main
       - dev
+    paths:
+      - '.cargo/**'
+      - '.github/**'
+      - 'lib/**'
+      - 'scripts/**'
+      - 'tools/**'
+      - 'lua54.dll'
+      - 'package.json'
   pull_request:
     branches:
       - main
+    paths:
+      - '.cargo/**'
+      - '.github/**'
+      - 'lib/**'
+      - 'scripts/**'
+      - 'tools/**'
+      - 'lua54.dll'
+      - 'package.json'
 jobs:
   lint:
     name: Lint
