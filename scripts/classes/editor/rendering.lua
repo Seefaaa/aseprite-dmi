@@ -229,17 +229,17 @@ function Editor:repaint_states()
 		end
 	end
 
-	local index = #self.dmi.states + 1
-	local bounds = self:box_bounds(index)
-
-	table.insert(self.widgets, ThemeWidget.new(
-		self,
-		bounds,
-		nil,
-		function() self:new_state() end
-	))
-
 	if #self.dmi.states < max_index then
+		local index = #self.dmi.states + 1
+		local bounds = self:box_bounds(index)
+
+		table.insert(self.widgets, ThemeWidget.new(
+			self,
+			bounds,
+			nil,
+			function() self:new_state() end
+		))
+
 		table.insert(self.widgets, TextWidget.new(
 			self,
 			Rectangle(
