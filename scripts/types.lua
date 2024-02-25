@@ -283,7 +283,7 @@ WebSocketMessageType = {
 --- @field off fun(self: app.events, id: number)
 
 --- @class app.theme
---- @field color (Color)[]
+--- @field color table<string, Color>
 
 --- @class app.fs
 --- @field pathSeparator string
@@ -806,6 +806,7 @@ WebSocketMessageType = {
 --- @field resize fun(dmi: Dmi, width: number, height: number, medhod: string): nil, string? Resizes the DMI file. If fails, returns an error message.
 --- @field crop fun(dmi: Dmi, x: number, y: number, width: number, height: number): nil, string? Crops the DMI file. If fails, returns an error message.
 --- @field expand fun(dmi: Dmi, x: number, y: number, width: number, height: number): nil, string? Expands the DMI file size. If fails, returns an error message.
+--- @field overlay_color fun(r: number, g: number, b: number, width: number, height: number, ...: number): ...: number|nil Overlays the given bytes of an image on a plain color.
 --- @field remove_dir fun(path: string, soft: boolean): nil, string? Removes a directory. If fails, returns an error message.
 --- @field exists fun(path: string): boolean Returns true if the path points at an existing entity.
 --- @field check_update fun(): boolean Return true if there is an update available.

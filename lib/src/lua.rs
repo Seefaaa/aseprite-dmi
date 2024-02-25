@@ -1,5 +1,4 @@
 use mlua::prelude::*;
-use native_dialog::FileDialog;
 use std::fs::{self, read_dir, remove_dir_all};
 use std::path::Path;
 
@@ -21,6 +20,7 @@ fn module(lua: &Lua) -> LuaResult<LuaTable> {
     exports.set("resize", lua.create_function(safe!(resize))?)?;
     exports.set("crop", lua.create_function(safe!(crop))?)?;
     exports.set("expand", lua.create_function(safe!(expand))?)?;
+    exports.set("overlay_color", lua.create_function(overlay_color)?)?;
     exports.set("remove_dir", lua.create_function(safe!(remove_dir))?)?;
     exports.set("exists", lua.create_function(exists)?)?;
     exports.set("check_update", lua.create_function(check_update)?)?;
@@ -151,6 +151,35 @@ fn expand<'lua>(
     Ok(LuaValue::Nil)
 }
 
+fn overlay_color<'lua>(
+    _: &'lua Lua,
+    (r, g, b, width, height, bytes): (u8, u8, u8, u32, u32, LuaMultiValue<'lua>),
+) -> LuaResult<LuaMultiValue<'lua>> {
+    use image::{imageops, EncodableLayout, ImageBuffer, Rgba};
+
+    let mut buf = Vec::new();
+    for byte in bytes {
+        if let LuaValue::Integer(byte) = byte {
+            buf.push(byte as u8);
+        }
+    }
+
+    if let Some(top) = ImageBuffer::from_vec(width, height, buf) {
+        let mut bottom = ImageBuffer::from_pixel(width, height, Rgba([r, g, b, 255]));
+        imageops::overlay(&mut bottom, &top, 0, 0);
+
+        let bytes = bottom
+            .as_bytes()
+            .iter()
+            .map(|byte| LuaValue::Integer(*byte as i64))
+            .collect();
+
+        return Ok(LuaMultiValue::from_vec(bytes));
+    }
+
+    Ok(LuaMultiValue::from_vec(vec![LuaValue::Nil]))
+}
+
 fn remove_dir(_: &Lua, (path, soft): (String, bool)) -> LuaResult<LuaValue> {
     let path = Path::new(&path);
 
@@ -175,7 +204,7 @@ fn save_dialog(
     _: &Lua,
     (title, filename, location): (String, String, String),
 ) -> LuaResult<String> {
-    let dialog = FileDialog::new()
+    let dialog = native_dialog::FileDialog::new()
         .set_title(&title)
         .set_filename(&filename)
         .set_location(&location)

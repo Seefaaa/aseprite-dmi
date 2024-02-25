@@ -65,34 +65,12 @@ function Editor:onpaint(ctx)
 				local widget = widget --[[ @as IconWidget ]]
 
 				ctx:drawThemeRect(state.part, widget.bounds)
-
-				local center = Point(
-					widget.bounds.x + widget.bounds.width / 2,
-					widget.bounds.y + widget.bounds.height / 2
-				)
-
-				local size = Rectangle(0, 0, self.dmi.width, self.dmi.height)
-				local icon = widget.icon:clone()
-
-				-- https://community.aseprite.org/t/unable-to-draw-to-transparent-image-to-dlg-canvas/19406
-				-- Aseprite messes up the alpha channel of the image when drawing it to the canvas
-
-				for pixel in icon:pixels() do
-					local color = Color(pixel())
-					if color.alpha == 0 then
-						pixel(app.pixelColor.rgba(0, 0, 0, 0))
-					elseif color.alpha < 255 then
-						pixel(app.pixelColor.rgba(color.red, color.green, color.blue, 255))
-					end
-				end
-
-				-- ctx:drawImage(icon, center.x - size.width / 2, center.y - size.height / 2)
-
 				ctx:drawImage(
-					icon,
-					icon.bounds,
-					Rectangle(center.x - size.width / 2, center.y - size.height / 2, icon.bounds.width,
-						icon.bounds.height)
+					widget.icon,
+					widget.icon.bounds,
+					Rectangle((widget.bounds.x + widget.bounds.width / 2) - self.dmi.width / 2,
+						(widget.bounds.y + widget.bounds.height / 2) - self.dmi.height / 2, widget.icon.bounds.width,
+						widget.icon.bounds.height)
 				)
 			elseif widget.type == "TextWidget" then
 				local widget = widget --[[ @as TextWidget ]]
@@ -225,6 +203,13 @@ function Editor:repaint_states()
 
 			local name = #state.name > 0 and state.name or "no name"
 
+			local icon = self.image_cache:get(state.frame_key)
+			local bytes = string.char(libdmi.overlay_color(app.theme.color.face.red, app.theme.color.face.green,
+				app.theme.color.face.blue, icon.width, icon.height, string.byte(icon.bytes, 1, #icon.bytes)) --[[@as number]])
+
+			local icon = Image(icon.width, icon.height)
+			icon.bytes = bytes
+
 			table.insert(self.widgets, IconWidget.new(
 				self,
 				bounds,
@@ -232,7 +217,7 @@ function Editor:repaint_states()
 					normal = { part = "sunken_normal", color = "button_normal_text" },
 					hot = { part = "sunken_focused", color = "button_hot_text" },
 				},
-				self.image_cache:get(state.frame_key),
+				icon,
 				function() self:open_state(state) end,
 				function(ev) self:state_context(state, ev) end
 			))
