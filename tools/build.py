@@ -71,6 +71,7 @@ os.makedirs(unzipped_dir)
 
 shutil.copy("package.json", unzipped_dir)
 shutil.copy("LICENSE", unzipped_dir)
+shutil.copy("README.md", unzipped_dir)
 shutil.copy(library_source, unzipped_dir)
 
 if win:

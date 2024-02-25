@@ -54,6 +54,7 @@ mkdir dist\unzipped
 
 copy package.json dist\unzipped
 copy LICENSE dist\unzipped
+copy README.md dist\unzipped
 copy lua54.dll dist\unzipped
 copy lib\target\%TARGET%\%LIBRARY_NAME%.dll dist\unzipped
 
