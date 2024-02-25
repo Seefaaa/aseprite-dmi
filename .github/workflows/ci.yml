@@ -1,7 +1,12 @@
 name: CI
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
 jobs:
   lint:
     name: Lint
