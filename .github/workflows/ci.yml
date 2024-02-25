@@ -6,7 +6,7 @@ on:
       - dev
     paths:
       - '.cargo/**'
-      - '.github/**'
+      - '.github/workflows/**'
       - 'lib/**'
       - 'scripts/**'
       - 'tools/**'
@@ -17,7 +17,7 @@ on:
       - main
     paths:
       - '.cargo/**'
-      - '.github/**'
+      - '.github/workflows/**'
       - 'lib/**'
       - 'scripts/**'
       - 'tools/**'
