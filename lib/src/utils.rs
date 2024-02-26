@@ -2,6 +2,7 @@ use anyhow::{Context as _, Result};
 use base64::{engine::general_purpose, Engine as _};
 use image::DynamicImage;
 use png::{Compression, Encoder};
+use serde_json::Value;
 use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::io::BufWriter;
@@ -64,28 +65,31 @@ pub fn optimal_size(frames: usize, width: u32, height: u32) -> (f32, u32, u32) {
     (sqrt, width, height)
 }
 
-pub fn check_latest_release() -> Result<bool> {
+pub fn check_latest_version() -> Result<Ordering> {
     let current_version = env!("CARGO_PKG_VERSION");
-    let repository = env!("CARGO_PKG_REPOSITORY");
+    let package_name = env!("CARGO_PKG_NAME");
 
-    let repository = repository.split('/').collect::<Vec<_>>();
-    let repository = format!("{}/{}", repository[3], repository[4]);
-
-    let user_agent = format!("{}/{}", env!("CARGO_PKG_NAME"), current_version);
+    let repository = env!("CARGO_PKG_REPOSITORY")
+        .split('/')
+        .skip(3)
+        .collect::<Vec<_>>()
+        .join("/");
 
     let client = reqwest::blocking::Client::builder()
-        .user_agent(user_agent)
+        .user_agent(format!("{package_name}/{current_version}"))
         .timeout(Duration::from_secs(3))
         .build()?;
 
     let url = format!("https://api.github.com/repos/{repository}/releases/latest");
 
-    let response = client.get(url).send()?.json::<serde_json::Value>()?;
+    let response = client.get(url).send()?.json::<Value>()?;
 
-    let latest_version = response["tag_name"].as_str().context("No tag_name found")?;
+    let latest_version = response["tag_name"]
+        .as_str()
+        .context(format!("No tag name found\n{response}"))?;
     let latest_version = &latest_version[1..];
 
-    Ok(compare_versions(current_version, latest_version) != Ordering::Less)
+    Ok(compare_versions(current_version, latest_version))
 }
 
 fn compare_versions(v1: &str, v2: &str) -> Ordering {

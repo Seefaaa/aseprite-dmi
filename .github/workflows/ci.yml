@@ -41,6 +41,10 @@ jobs:
         working-directory: lib
         run: |
           cargo clippy --locked -- -D warnings
+      - name: Check release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cargo test --locked --test version
   build:
     needs: lint
     strategy:
@@ -69,7 +73,7 @@ jobs:
       - name: Run cargo tests
         working-directory: lib
         run: |
-          cargo test --target ${{ matrix.rust-target }} --locked
+          cargo test --target ${{ matrix.rust-target }} --locked --test dmi
       - name: Run cargo build
         working-directory: lib
         run: |
