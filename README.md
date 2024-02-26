@@ -39,10 +39,9 @@ You can `Expand`, `Resize`, and `Crop` DMI files in `File > DMI Editor`. The act
 ### Requirements
 
 - [Rust](https://www.rust-lang.org/)
+- [Python](https://www.python.org/) (build script)
 
-### Windows
-
-To build the project, execute the `build.cmd` file or run `build` or `build --release` in the command line.
+To build the project, run `tools/build.py` python script.
 
 ## Contact
 

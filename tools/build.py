@@ -2,6 +2,8 @@
 import os
 import shutil
 import subprocess
+import urllib.request
+import urllib.error
 import zipfile
 
 EXTENSION_NAME = "aseprite-dmi"
@@ -32,9 +34,9 @@ if not CI:
     except FileNotFoundError:
         print("Error: Rust is not installed.")
         sys.exit(1)
-
     os.chdir(os.path.join(working_dir, "lib"))
     try:
+        print("Building main library...")
         if TARGET == "debug":
             subprocess.run(["cargo", "build"], check=True)
         else:
@@ -42,7 +44,6 @@ if not CI:
     except subprocess.CalledProcessError:
         print("Error: lib build failed. Please check for errors.")
         sys.exit(1)
-
 
 os.chdir(working_dir)
 
@@ -78,7 +79,22 @@ shutil.copy("README.md", unzipped_dir)
 shutil.copy(library_source, unzipped_dir)
 
 if win:
-    shutil.copy(f"{library_prefix}lua54{library_extension}", unzipped_dir)
+    lua_library = f"{library_prefix}lua54{library_extension}"
+    if not os.path.exists(lua_library):
+        print("Lua library not found. Downloading...")
+        zip_path = os.path.join(working_dir, "lua54.zip")
+        try:
+            url = "https://netix.dl.sourceforge.net/project/luabinaries/5.4.2/Windows%20Libraries/Dynamic/lua-5.4.2_Win64_dllw6_lib.zip"
+            urllib.request.urlretrieve(url, zip_path)
+        except urllib.error.URLError as e:
+            print(f"Could not download lua library. Please check your internet connection and try again.")
+            print(f"Error details: {e}")
+            sys.exit(1)
+        else:
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extract(lua_library, working_dir)
+            os.remove(zip_path)
+    shutil.copy(lua_library, unzipped_dir)
 
 shutil.copytree(os.path.join("scripts"), os.path.join(unzipped_dir, "scripts"))
 

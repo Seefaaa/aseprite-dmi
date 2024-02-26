@@ -1,4 +1,5 @@
-.dist
 dist
 lib/target
 lib/temp
+lua54.dll
+lua54.zip
