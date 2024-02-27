@@ -1,8 +1,9 @@
-use dmi::check_latest_version;
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::env::current_dir;
 use std::fs::read_to_string;
+
+use dmi::check_latest_version;
 
 #[test]
 fn check_version() {

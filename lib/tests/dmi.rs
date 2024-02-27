@@ -1,8 +1,14 @@
+use std::fs::{remove_dir_all, remove_file};
+use std::path::Path;
+
 use dmi::Dmi;
 
 #[test]
 fn open_and_save() {
-    let dmi = Dmi::open("tests/assets/anomaly.dmi").unwrap();
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let sample_file = manifest_dir.join("tests/assets/anomaly.dmi");
+
+    let dmi = Dmi::open(sample_file).unwrap();
 
     assert_eq!(dmi.name, "anomaly");
     assert_eq!(dmi.width, 32);
@@ -32,21 +38,35 @@ fn open_and_save() {
 
     assert_eq!(delay, &2.0);
 
-    dmi.save("temp/anomaly.dmi").unwrap();
+    let temp_dir = Path::new(env!("CARGO_TARGET_TMPDIR"));
+    let temp_file = temp_dir.join("anomaly.dmi");
 
-    clear_temp();
+    if let Err(e) = dmi.save(&temp_file) {
+        let _ = remove_file(temp_file);
+        panic!("{e:?}");
+    }
+
+    let _ = remove_file(temp_file);
 }
 
 #[test]
 fn serialize_and_deserialize() {
     let dmi = Dmi::open("tests/assets/anomaly.dmi").unwrap();
 
-    clear_temp();
+    let temp_dir = Path::new(env!("CARGO_TARGET_TMPDIR"));
 
-    let serialized = dmi.to_serialized("temp", false).unwrap();
-    let deserialized = Dmi::from_serialized(serialized).unwrap();
+    let serialized = dmi.to_serialized(temp_dir, false).unwrap();
 
-    clear_temp();
+    let temp = serialized.temp.clone();
+
+    let deserialized = Dmi::from_serialized(serialized);
+
+    let Ok(deserialized) = deserialized else {
+        let _ = remove_dir_all(temp);
+        panic!("{:?}", deserialized.unwrap_err());
+    };
+
+    let _ = remove_dir_all(temp);
 
     assert_eq!(dmi.name, deserialized.name);
     assert_eq!(dmi.width, deserialized.width);
@@ -76,8 +96,4 @@ fn serialize_and_deserialize() {
     let deserialized_delay = &deserialized_state.delays[0];
 
     assert_eq!(delay, deserialized_delay);
-}
-
-fn clear_temp() {
-    let _ = std::fs::remove_dir_all("temp");
 }
