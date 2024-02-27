@@ -1,11 +1,12 @@
 use mlua::prelude::*;
+use std::cmp::Ordering;
 use std::fs::{self, read_dir, remove_dir_all};
 use std::path::Path;
 
 use crate::dmi::*;
 use crate::errors::ExternalError;
 use crate::macros::safe;
-use crate::utils::check_latest_release;
+use crate::utils::check_latest_version;
 
 #[mlua::lua_module(name = "dmi_module")]
 fn module(lua: &Lua) -> LuaResult<LuaTable> {
@@ -229,9 +230,13 @@ fn instances(_: &Lua, _: ()) -> LuaResult<usize> {
 }
 
 fn check_update(_: &Lua, (): ()) -> LuaResult<bool> {
-    let up_to_date = check_latest_release().unwrap_or(true);
+    let version = check_latest_version();
 
-    Ok(!up_to_date)
+    if let Ok(Ordering::Less) = version {
+        return Ok(true);
+    }
+
+    Ok(false)
 }
 
 fn open_repo(_: &Lua, path: Option<String>) -> LuaResult<LuaValue> {
