@@ -1,11 +1,14 @@
----
--- SOME TYPES ARE MISSING AND SOME ARE NOT CORRECTLY DEFINED
--- AND I'M JUST COMPLETING THE TYPES IN NEED
----
-
 --- @diagnostic disable: lowercase-global
 
 ------------------- NAMESPACES -------------------
+
+--- @type libdmi
+--- @diagnostic disable-next-line: missing-fields
+libdmi = {}
+
+--- @type editor
+--- @diagnostic disable-next-line: missing-fields
+Editor = {}
 
 --- @type app
 --- @diagnostic disable-next-line: missing-fields
@@ -264,7 +267,7 @@ WebSocketMessageType = {
 --- @field tag Tag
 --- @field tool any TODO
 --- @field brush any TODO
---- @field editor Editor
+--- @field editor any
 --- @field window any TODO
 --- @field command table<string, function>
 --- @field pixelColor app.pixelColor
@@ -796,7 +799,7 @@ WebSocketMessageType = {
 ---| 'PONG'
 ---| 'FRAGMENT'
 
---- @class LibDmi: table
+--- @class libdmi: table
 --- @field new_file fun(name: string, width: number, height: number, temp: string): Dmi?, string? Creates a new DMI file. If fails, returns nil and an error message.
 --- @field open_file fun(path: string, temp: string): Dmi?, string? Opens a DMI file. If fails, returns nil and an error message.
 --- @field save_file fun(dmi: Dmi, filename: string): nil, string? Saves the DMI file. If fails, returns an error message.
@@ -831,3 +834,12 @@ WebSocketMessageType = {
 --- @field rewind boolean Whether the state rewinds or not.
 --- @field movement boolean Whether the state is a movement state or not.
 --- @field hotspots (string)[] The hotspots of the state.
+
+--- @class editor
+--- @field open fun(filename: string): Editor
+
+--- @class Editor: userdata
+--- @field filename string The opened file name.
+--- @field dialog Dialog The dialog of the editor.
+--- @field width number The width of the dialog.
+--- @field height number The height of the dialog.
