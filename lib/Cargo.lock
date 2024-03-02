@@ -50,7 +50,7 @@ checksum = "d92bec98840b8f03a5ff5413de5293bfcd8bf96467cf5452609f939ec6f5de16"
 
 [[package]]
 name = "aseprite-dmi"
-version = "1.0.7"
+version = "1.0.8"
 dependencies = [
  "anyhow",
  "arboard",
