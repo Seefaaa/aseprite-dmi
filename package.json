@@ -13,16 +13,6 @@
 	"categories": [ "Scripts" ],
 	"contributes": {
 		"scripts": [
-			{ "path": "./scripts/classes/cache.lua" },
-			{ "path": "./scripts/classes/editor/_editor.lua" },
-			{ "path": "./scripts/classes/editor/rendering.lua" },
-			{ "path": "./scripts/classes/editor/state.lua" },
-			{ "path": "./scripts/classes/statesprite.lua" },
-			{ "path": "./scripts/classes/widget.lua" },
-			{ "path": "./scripts/functions/other.lua" },
-			{ "path": "./scripts/functions/string.lua" },
-			{ "path": "./scripts/functions/table.lua" },
-			{ "path": "./scripts/constants.lua" },
 			{ "path": "./scripts/main.lua" }
 		]
 	}
