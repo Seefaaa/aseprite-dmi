@@ -19,7 +19,7 @@ impl<'lua> Dialog<'lua> {
 
         Ok(Self(lua, dialog))
     }
-    pub fn canvas<F>(&self, width: u32, height: u32, on_paint: F) -> Result<()>
+    pub fn canvas<F>(&self, width: u32, height: u32, on_paint: F, on_mouse_move: F) -> Result<()>
     where
         F: IntoLua<'lua>,
     {
@@ -31,6 +31,7 @@ impl<'lua> Dialog<'lua> {
                             width = $width,
                             height = $height,
                             onpaint = function(ev) $on_paint(ev.context) end,
+                            onmousemove = $on_mouse_move,
                     }
             })
             .exec()?;

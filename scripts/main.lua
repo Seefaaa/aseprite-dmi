@@ -25,6 +25,15 @@ function init(plugin)
 			end
 		end
 	end)
+
+	plugin:newCommand {
+		id = "lua_mem_usage",
+		title = "Lua Memory Usage",
+		group = "file_open",
+		onclick = function()
+			app.alert("Memory usage: " .. collectgarbage("count") .. " KB")
+		end
+	}
 end
 
 --- Exits the plugin. Called when the plugin is removed or Aseprite is closed.

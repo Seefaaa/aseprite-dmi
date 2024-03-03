@@ -16,7 +16,7 @@ fn module(lua: &'static Lua) -> Result<Value> {
 fn editor(lua: &'static Lua) -> Result<Table> {
     let table = lua.create_table()?;
 
-    let open = |lua, filename: String| Ok(Editor::open(lua, filename));
+    let open = |lua, filename: String| Editor::open(lua, filename);
     table.set("open", lua.create_function(open)?)?;
 
     Ok(table)

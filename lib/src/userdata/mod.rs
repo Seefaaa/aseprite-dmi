@@ -4,7 +4,7 @@ mod editor;
 
 pub use editor::Editor;
 
-pub struct EmptyUserData;
+struct EmptyUserData;
 
 impl UserData for EmptyUserData {}
 
@@ -27,3 +27,5 @@ impl<'lua> RefHolder<'lua> {
         self.0.user_value()
     }
 }
+
+impl<'lua> UserData for RefHolder<'lua> {}
