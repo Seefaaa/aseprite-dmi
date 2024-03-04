@@ -10,6 +10,7 @@ EXTENSION_NAME = "aseprite-dmi"
 LIBRARY_NAME = "dmi"
 TARGET = "debug"
 CI = False
+REPLACE = False
 
 import sys
 args = sys.argv[1:]
@@ -24,6 +25,12 @@ elif "--ci" in args:
     except IndexError:
         print("Error: Please provide a target name after --ci flag.")
         sys.exit(1)
+
+win = sys.platform.startswith('win')
+
+if "--replace" in args:
+    REPLACE = True
+    extensions_dir = os.path.join(os.getenv("APPDATA"), "Aseprite", "extensions") if win else os.path.join(os.getenv("HOME"), ".config", "aseprite", "extensions")
 
 working_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 os.chdir(working_dir)
@@ -47,7 +54,6 @@ if not CI:
 
 os.chdir(working_dir)
 
-win = sys.platform.startswith('win')
 if win:
     library_extension = ".dll"
     library_prefix = ""
@@ -123,5 +129,11 @@ if os.path.exists(extension_path):
     os.remove(extension_path)
 
 shutil.copy(zip_path, extension_path)
+
+if REPLACE:
+    extension_dir = os.path.join(extensions_dir, f"{EXTENSION_NAME}")
+    if os.path.exists(extension_dir):
+        shutil.rmtree(extension_dir)
+    shutil.copytree(unzipped_dir, extension_dir)
 
 print("Build completed successfully.")
