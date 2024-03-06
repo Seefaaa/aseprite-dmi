@@ -6,10 +6,6 @@
 --- @diagnostic disable-next-line: missing-fields
 libdmi = {}
 
---- @type editor
---- @diagnostic disable-next-line: missing-fields
-Editor = {}
-
 --- @type app
 --- @diagnostic disable-next-line: missing-fields
 app = {}
@@ -19,6 +15,13 @@ app = {}
 json = {}
 
 ------------------- CONSTRUCTORS -------------------
+
+--- Creates a new Editor object.
+--- @param filename string
+--- @return Editor editor
+function Editor(filename)
+	return {}
+end
 
 --- @class Point.Params
 --- @field x number

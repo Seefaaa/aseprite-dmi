@@ -21,7 +21,7 @@ function init(plugin)
 			if app.sprite and string.ends_with(filename, ".dmi") then
 				app.command.CloseFile { ui = false }
 				loadlib(plugin.path)
-				Editor.open(filename)
+				Editor(filename)
 			end
 		end
 	end)

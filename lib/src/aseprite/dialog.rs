@@ -1,9 +1,14 @@
 use mlua::{chunk, AnyUserData, IntoLua, Lua, Result};
 
-pub struct Dialog<'lua>(pub &'lua Lua, pub AnyUserData<'lua>);
+pub struct Dialog<'lua>(pub &'lua Lua, pub AnyUserData<'lua>, pub AnyUserData<'lua>);
 
 impl<'lua> Dialog<'lua> {
-    pub fn create<F>(lua: &'lua Lua, title: &str, on_close: F) -> Result<Self>
+    pub fn create<F>(
+        lua: &'lua Lua,
+        editor: AnyUserData<'lua>,
+        title: &str,
+        on_close: F,
+    ) -> Result<Self>
     where
         F: IntoLua<'lua>,
     {
@@ -17,20 +22,26 @@ impl<'lua> Dialog<'lua> {
             })
             .eval::<AnyUserData>()?;
 
-        Ok(Self(lua, dialog))
+        Ok(Self(lua, dialog, editor))
     }
-    pub fn canvas<F>(&self, width: u32, height: u32, on_paint: F, on_mouse_move: F) -> Result<()>
-    where
-        F: IntoLua<'lua>,
-    {
+    pub fn canvas(
+        &self,
+        width: u32,
+        height: u32,
+        on_paint: impl IntoLua<'lua>,
+        on_mouse_move: impl IntoLua<'lua>,
+    ) -> Result<()> {
         let dialog = &self.1;
+        let editor = &self.2;
         self.0
             .load(chunk! {
                     local dialog = $dialog
+                    local editor = $editor
+                    local on_paint = $on_paint
                     dialog:canvas {
                             width = $width,
                             height = $height,
-                            onpaint = function(ev) $on_paint(ev.context) end,
+                            onpaint = on_paint and function(ev) on_paint(editor, ev.context) end or nil,
                             onmousemove = $on_mouse_move,
                     }
             })

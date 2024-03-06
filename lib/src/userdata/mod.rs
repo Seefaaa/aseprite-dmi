@@ -1,7 +1,9 @@
 use mlua::{AnyUserData, FromLua, IntoLua, Lua, Result, UserData};
 
+mod dmi;
 mod editor;
 
+pub use dmi::Dmi;
 pub use editor::Editor;
 
 struct EmptyUserData;
@@ -28,4 +30,4 @@ impl<'lua> RefHolder<'lua> {
     }
 }
 
-impl<'lua> UserData for RefHolder<'lua> {}
+impl UserData for RefHolder<'_> {}
