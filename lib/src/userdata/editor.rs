@@ -1,5 +1,5 @@
 use mlua::{
-    AnyUserData, AnyUserDataExt, Function, IntoLua, Lua, Nil, Result, UserData, UserDataFields,
+    AnyUserData, AnyUserDataExt, Function, Lua, Nil, Result, UserData, UserDataFields,
     UserDataMethods, Value,
 };
 
@@ -11,48 +11,35 @@ pub struct Editor<'lua> {
     width: u32,
     height: u32,
     dialog: RefHolder<'lua>,
-    #[allow(dead_code)]
-    mouse: Mouse,
     dmi: RefHolder<'lua>,
+    mouse: Mouse,
 }
 
 impl<'a: 'static> Editor<'a> {
     pub fn open(lua: &'a Lua, filename: String) -> Result<AnyUserData<'a>> {
-        let ref_holder = match RefHolder::new(lua)?.into_lua(lua)? {
-            Value::UserData(ref_holder) => ref_holder,
-            _ => unreachable!(),
-        };
+        let editor = lua.create_userdata(Self {
+            filename,
+            width: 185,
+            height: 215,
+            dialog: RefHolder::new(lua)?,
+            dmi: RefHolder::new(lua)?,
+            mouse: Mouse::default(),
+        })?;
 
         {
-            let ref_holder = ref_holder.borrow::<RefHolder>()?;
-
-            let editor = Editor {
-                filename,
-                width: 185,
-                height: 215,
-                dialog: RefHolder::new(lua)?,
-                mouse: Mouse::default(),
-                dmi: RefHolder::new(lua)?,
-            };
-
-            ref_holder.set(editor)?;
-            let editor = ref_holder.get::<AnyUserData>()?;
-
-            {
-                let editor = editor.borrow::<Editor>()?;
-                editor.dmi.set(Dmi {
-                    name: "Hello, World!".to_string(),
-                })?;
-            }
-
-            {
-                let dialog = editor.call_method::<_, AnyUserData>("create_dialog", ())?;
-                let editor = editor.borrow::<Editor>()?;
-                editor.dialog.set(dialog)?;
-            }
+            let editor = editor.borrow::<Editor>()?;
+            editor
+                .dmi
+                .set(Dmi::open(lua, "Hello, World!".to_string())?)?;
         }
 
-        Ok(ref_holder)
+        {
+            let dialog = editor.call_method::<_, AnyUserData>("create_dialog", ())?;
+            let editor = editor.borrow::<Editor>()?;
+            editor.dialog.set(dialog)?;
+        }
+
+        Ok(editor)
     }
     fn create_dialog<'lua>(lua: &'lua Lua, this: AnyUserData) -> Result<AnyUserData<'lua>> {
         let ref_holder = RefHolder::new(lua)?;
@@ -67,8 +54,9 @@ impl<'a: 'static> Editor<'a> {
 
         let this = ref_holder.get::<AnyUserData>()?;
         let on_paint = this.get::<_, Function>("on_paint")?;
+        let on_mouse_move = this.get::<_, Function>("on_mouse_move")?;
 
-        dialog.canvas(width, height, on_paint, Nil)?;
+        dialog.canvas(width, height, on_paint, on_mouse_move)?;
         dialog.button("Save", Nil)?;
         dialog.show(false)?;
 
@@ -94,20 +82,28 @@ impl<'a: 'static> Editor<'a> {
 
         Ok(())
     }
+    fn on_mouse_move(_: &Lua, (this, event): (AnyUserData, MouseEvent)) -> Result<()> {
+        let mut this = this.borrow_mut::<Editor>()?;
+        this.mouse.x = event.x;
+        this.mouse.y = event.y;
+        Ok(())
+    }
 }
 
-impl<'a: 'static> UserData for Editor<'a> {
+impl UserData for Editor<'static> {
     fn add_fields<'lua, F: UserDataFields<'lua, Self>>(fields: &mut F) {
         fields.add_field_method_get("filename", |_, this| Ok(this.filename.clone()));
+        fields.add_field_method_get("width", |_, this| Ok(this.width));
+        fields.add_field_method_get("height", |_, this| Ok(this.height));
         fields.add_field_method_get("dialog", |_, this| {
             Ok(this.dialog.get::<Value>().unwrap_or(Nil))
         });
-        fields.add_field_method_get("width", |_, this| Ok(this.width));
-        fields.add_field_method_get("height", |_, this| Ok(this.height));
+        fields.add_field_method_get("dmi", |_, this| Ok(this.dmi.get::<Value>().unwrap_or(Nil)));
     }
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_function_mut("create_dialog", Self::create_dialog);
         methods.add_function_mut("on_paint", Self::on_paint);
+        methods.add_function_mut("on_mouse_move", Self::on_mouse_move);
     }
 }
 

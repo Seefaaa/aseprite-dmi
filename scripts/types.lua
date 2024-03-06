@@ -820,29 +820,17 @@ WebSocketMessageType = {
 --- @field save_dialog fun(title: string, filename: string, location: string): string?, string? Shows a save dialog. Returns the path of the file to save or empty string if the user cancels the dialog.
 --- @field open_repo fun(path?: string): nil, string? Opens the repository in the default browser. If fails, returns an error message.
 
---- @class Dmi: table
+--- @class Editor: userdata
+--- @field filename string The opened file name.
+--- @field width number The width of the dialog.
+--- @field height number The height of the dialog.
+--- @field dialog Dialog The dialog of the editor.
+--- @field dmi Dmi The opened DMI file.
+
+--- @class Dmi: userdata
 --- @field name string The name of the DMI file.
 --- @field width number The width of the DMI file.
 --- @field height number The height of the DMI file.
 --- @field states (State)[] The states of the DMI file.
---- @field temp string The temporary directory where images of states are stored.
 
---- @class State: table
---- @field name string The name of the state.
---- @field dirs 1|4|8 The number of directions in the state.
---- @field frame_key string The frame key of the state used in the temporary directory.
---- @field frame_count number The number of frames in the state.
---- @field delays (number)[] The delays of the state.
---- @field loop number How many times the state loops.
---- @field rewind boolean Whether the state rewinds or not.
---- @field movement boolean Whether the state is a movement state or not.
---- @field hotspots (string)[] The hotspots of the state.
-
---- @class editor
---- @field open fun(filename: string): Editor
-
---- @class Editor: userdata
---- @field filename string The opened file name.
---- @field dialog Dialog The dialog of the editor.
---- @field width number The width of the dialog.
---- @field height number The height of the dialog.
+--- @class State: userdata

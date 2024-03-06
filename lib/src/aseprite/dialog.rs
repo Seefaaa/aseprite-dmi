@@ -38,11 +38,12 @@ impl<'lua> Dialog<'lua> {
                     local dialog = $dialog
                     local editor = $editor
                     local on_paint = $on_paint
+                    local on_mouse_move = $on_mouse_move
                     dialog:canvas {
                             width = $width,
                             height = $height,
                             onpaint = on_paint and function(ev) on_paint(editor, ev.context) end or nil,
-                            onmousemove = $on_mouse_move,
+                            onmousemove = on_mouse_move and function(ev) on_mouse_move(editor, ev) end or nil,
                     }
             })
             .exec()?;
