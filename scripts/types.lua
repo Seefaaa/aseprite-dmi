@@ -834,3 +834,4 @@ WebSocketMessageType = {
 --- @field states (State)[] The states of the DMI file.
 
 --- @class State: userdata
+--- @field name string The name of the state.

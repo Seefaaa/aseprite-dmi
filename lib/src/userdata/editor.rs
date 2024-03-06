@@ -18,7 +18,7 @@ pub struct Editor<'lua> {
 impl<'a: 'static> Editor<'a> {
     pub fn open(lua: &'a Lua, filename: String) -> Result<AnyUserData<'a>> {
         let editor = lua.create_userdata(Self {
-            filename,
+            filename: filename.clone(),
             width: 185,
             height: 215,
             dialog: RefHolder::new(lua)?,
@@ -28,9 +28,7 @@ impl<'a: 'static> Editor<'a> {
 
         {
             let editor = editor.borrow::<Editor>()?;
-            editor
-                .dmi
-                .set(Dmi::open(lua, "Hello, World!".to_string())?)?;
+            editor.dmi.set(Dmi::open(lua, filename)?)?;
         }
 
         {
