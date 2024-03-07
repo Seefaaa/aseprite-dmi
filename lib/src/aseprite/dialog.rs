@@ -1,6 +1,6 @@
-use mlua::{chunk, AnyUserData, IntoLua, Lua, Result};
+use mlua::{chunk, AnyUserData, Function, IntoLua, Lua, Result};
 
-pub struct Dialog<'lua>(pub &'lua Lua, pub AnyUserData<'lua>, pub AnyUserData<'lua>);
+pub struct Dialog<'lua>(&'lua Lua, pub AnyUserData<'lua>, AnyUserData<'lua>);
 
 impl<'lua> Dialog<'lua> {
     pub fn create<F>(
@@ -12,16 +12,11 @@ impl<'lua> Dialog<'lua> {
     where
         F: IntoLua<'lua>,
     {
-        let title = title.into_lua(lua)?;
-        let dialog = lua
-            .load(chunk! {
-                    return Dialog {
-                            title = $title,
-                            onclose = $on_close,
-                    }
-            })
-            .eval::<AnyUserData>()?;
-
+        let constructor = lua.globals().get::<_, Function>("Dialog")?;
+        let args = lua.create_table()?;
+        args.raw_set("title", title)?;
+        args.raw_set("onclose", on_close)?;
+        let dialog = constructor.call(args)?;
         Ok(Self(lua, dialog, editor))
     }
     pub fn canvas(
