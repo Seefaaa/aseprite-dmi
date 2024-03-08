@@ -18,7 +18,7 @@ json = {}
 
 --- Creates a new Editor object.
 --- @param filename string
---- @return Editor editor
+--- @return Editor? editor
 function Editor(filename)
 	return {}
 end

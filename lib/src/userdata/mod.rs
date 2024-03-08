@@ -11,6 +11,7 @@ struct EmptyUserData;
 
 impl UserData for EmptyUserData {}
 
+#[derive(Debug)]
 pub struct RefHolder<'lua>(AnyUserData<'lua>);
 
 impl<'lua> RefHolder<'lua> {

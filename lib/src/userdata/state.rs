@@ -1,6 +1,7 @@
 use image::DynamicImage;
 use mlua::UserData;
 
+#[derive(Debug)]
 pub struct State {
     pub name: String,
     pub dirs: u8,

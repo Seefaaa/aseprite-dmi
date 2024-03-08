@@ -10,6 +10,7 @@ use super::{RefHolder, State};
 
 const DMI_VERSION: &str = "4.0";
 
+#[derive(Debug)]
 pub struct Dmi<'lua> {
     pub name: String,
     pub width: u32,

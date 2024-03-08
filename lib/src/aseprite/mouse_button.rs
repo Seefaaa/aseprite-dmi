@@ -1,6 +1,8 @@
 use mlua::{FromLua, Lua, Result, Value};
 
+#[derive(Debug)]
 pub enum MouseButton {
+    None,
     Left,
     Middle,
     Right,
@@ -13,6 +15,7 @@ impl<'lua> FromLua<'lua> for MouseButton {
     fn from_lua(value: Value<'lua>, _: &'lua Lua) -> Result<Self> {
         match value {
             Value::Integer(button) => match button {
+                0 => Ok(MouseButton::None),
                 1 => Ok(MouseButton::Left),
                 2 => Ok(MouseButton::Right),
                 3 => Ok(MouseButton::Middle),
@@ -20,7 +23,7 @@ impl<'lua> FromLua<'lua> for MouseButton {
                 5 => Ok(MouseButton::X2),
                 _ => Ok(MouseButton::Other(button as u8)),
             },
-            _ => unreachable!("Invalid mouse button"),
+            _ => Ok(MouseButton::None),
         }
     }
 }

@@ -1,11 +1,13 @@
 use mlua::{
-    AnyUserData, AnyUserDataExt, Function, Lua, Nil, Result, UserData, UserDataFields,
-    UserDataMethods, Value,
+    AnyUserData, AnyUserDataExt, ExternalResult, Function, Lua, Nil, Result, UserData,
+    UserDataFields, UserDataMethods, Value,
 };
 
 use crate::aseprite::{Dialog, GraphicsContext, MouseButton, MouseEvent};
+use crate::macros::safe_function;
 use crate::userdata::{Dmi, RefHolder};
 
+#[derive(Debug)]
 pub struct Editor<'lua> {
     filename: String,
     width: u32,
@@ -32,9 +34,13 @@ impl<'a: 'static> Editor<'a> {
         }
 
         {
-            let dialog = editor.call_method::<_, AnyUserData>("create_dialog", ())?;
-            let editor = editor.borrow::<Editor>()?;
-            editor.dialog.set(dialog)?;
+            match editor.call_method("create_dialog", ())? {
+                Value::UserData(dialog) => {
+                    let editor = editor.borrow::<Editor>()?;
+                    editor.dialog.set(dialog)?;
+                }
+                _ => return Err("Failed to create dialog".to_string()).into_lua_err(),
+            }
         }
 
         Ok(editor)
@@ -44,13 +50,11 @@ impl<'a: 'static> Editor<'a> {
         ref_holder.set(this)?;
 
         let this = ref_holder.get::<AnyUserData>()?;
-
-        let width = this.get::<_, u32>("width")?;
-        let height = this.get::<_, u32>("height")?;
-
         let dialog = Dialog::create(lua, this, "Editor", Nil)?;
 
         let this = ref_holder.get::<AnyUserData>()?;
+        let width = this.get::<_, u32>("width")?;
+        let height = this.get::<_, u32>("height")?;
         let on_paint = this.get::<_, Function>("on_paint")?;
         let on_mouse_move = this.get::<_, Function>("on_mouse_move")?;
 
@@ -99,13 +103,13 @@ impl UserData for Editor<'static> {
         fields.add_field_method_get("dmi", |_, this| Ok(this.dmi.get::<Value>().unwrap_or(Nil)));
     }
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_function_mut("create_dialog", Self::create_dialog);
-        methods.add_function_mut("on_paint", Self::on_paint);
-        methods.add_function_mut("on_mouse_move", Self::on_mouse_move);
+        methods.add_function_mut("create_dialog", safe_function!(Self::create_dialog));
+        methods.add_function_mut("on_paint", safe_function!(Self::on_paint));
+        methods.add_function_mut("on_mouse_move", safe_function!(Self::on_mouse_move));
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Mouse {
     x: u32,
     y: u32,
