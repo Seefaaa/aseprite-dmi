@@ -11,6 +11,8 @@ use crate::userdata::{Dmi, RefHolder};
 use super::State;
 
 const PADDING: u32 = 3;
+const TEXT_HEIGHT: u32 = 7;
+const TEXT_PADDING: u32 = 6;
 
 #[derive(Debug)]
 pub struct Editor<'lua> {
@@ -85,15 +87,15 @@ impl<'a: 'static> Editor<'a> {
             this.height = canvas_height;
 
             if this.widgets.is_empty() {
-                this.create_widgets()?;
+                this.create_widgets(&ctx)?;
             }
 
             for widget in this.widgets.iter() {
                 match widget {
-                    Widget::_Text(text, color, x, y) => {
+                    Widget::Text(text, color, x, y) => {
                         ctx.fill_text(text, color, *x, *y)?;
                     }
-                    Widget::State(image, x, y) => {
+                    Widget::Image(image, x, y) => {
                         ctx.draw_theme_rect(
                             "sunken_normal",
                             *x,
@@ -109,7 +111,7 @@ impl<'a: 'static> Editor<'a> {
 
         Ok(())
     }
-    fn create_widgets(&mut self) -> Result<()> {
+    fn create_widgets(&mut self, ctx: &GraphicsContext) -> Result<()> {
         self.widgets.clear();
 
         if let Value::UserData(dmi) = self.dmi.get::<Value>()? {
@@ -125,10 +127,10 @@ impl<'a: 'static> Editor<'a> {
                 if index <= max_states {
                     let state = state.borrow::<State>()?;
 
-                    let width = dmi.width + 2 + PADDING;
-                    let height = dmi.height + 2 + PADDING;
-                    let x = width * (index % max_rows) + 1;
-                    let y = height * (index / max_rows) + 1;
+                    let width = dmi.width + 2;
+                    let height = dmi.height + 2;
+                    let x = (width + PADDING) * (index % max_rows) + 1;
+                    let y = (height + TEXT_HEIGHT + TEXT_PADDING * 2) * (index / max_rows) + 1;
 
                     let image = Image::create(self.lua, dmi.width, dmi.height)?;
                     let Some(frame) = state.frames.first() else {
@@ -137,7 +139,14 @@ impl<'a: 'static> Editor<'a> {
                     image.set_image(frame)?;
 
                     self.widgets
-                        .push(Widget::State(image.1, x as i32, y as i32));
+                        .push(Widget::Image(image.1, x as i32, y as i32));
+
+                    let text = fit_text(ctx, &state.name, width + 2)?;
+                    let x = x + (width + 2 - ctx.measure_text(&text)?.0) / 2;
+                    let y = y + height + TEXT_PADDING + 1;
+
+                    self.widgets
+                        .push(Widget::Text(text, "text".to_string(), x as i32, y as i32));
                 }
                 Ok(())
             })?;
@@ -180,6 +189,24 @@ struct Mouse {
 
 #[derive(Debug)]
 pub enum Widget<'lua> {
-    State(AnyUserData<'lua>, i32, i32),
-    _Text(String, String, i32, i32),
+    Image(AnyUserData<'lua>, i32, i32),
+    Text(String, String, i32, i32),
+}
+
+fn fit_text(ctx: &GraphicsContext, text: &str, width: u32) -> Result<String> {
+    let mut text = text.to_owned();
+    let mut size = ctx.measure_text(&text)?;
+
+    while size.0 > width {
+        if text.ends_with("...") {
+            text.pop();
+            text.pop();
+            text.pop();
+        }
+        text.pop();
+        text.push_str("...");
+        size = ctx.measure_text(&text)?;
+    }
+
+    Ok(text)
 }
