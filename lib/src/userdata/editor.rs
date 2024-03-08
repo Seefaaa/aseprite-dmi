@@ -1,10 +1,11 @@
+use image::{imageops, DynamicImage, ImageBuffer, Rgba};
 use mlua::{
-    AnyUserData, AnyUserDataExt, ExternalResult, Function, Lua, Nil, Result, Table, UserData,
+    AnyUserData, AnyUserDataExt, ExternalResult as _, Function, Lua, Nil, Result, Table, UserData,
     UserDataFields, UserDataMethods, Value,
 };
 use std::cmp::max;
 
-use crate::aseprite::{Dialog, GraphicsContext, Image, MouseButton, MouseEvent};
+use crate::aseprite::{Color, Dialog, GraphicsContext, Image, MouseButton, MouseEvent};
 use crate::macros::safe_function;
 use crate::userdata::{Dmi, RefHolder};
 
@@ -136,7 +137,12 @@ impl<'a: 'static> Editor<'a> {
                     let Some(frame) = state.frames.first() else {
                         return Err("There is a state with no frames".to_string()).into_lua_err();
                     };
-                    image.set_image(frame)?;
+                    let color = Color::from_theme(self.lua, "face")?;
+                    let (r, g, b, _) = color.rgba()?;
+                    let mut bottom =
+                        ImageBuffer::from_pixel(dmi.width, dmi.height, Rgba([r, g, b, 255]));
+                    imageops::overlay(&mut bottom, frame, 0, 0);
+                    image.set_image(&DynamicImage::ImageRgba8(bottom))?;
 
                     self.widgets
                         .push(Widget::Image(image.1, x as i32, y as i32));
@@ -145,8 +151,12 @@ impl<'a: 'static> Editor<'a> {
                     let x = x + (width + 2 - ctx.measure_text(&text)?.0) / 2;
                     let y = y + height + TEXT_PADDING + 1;
 
-                    self.widgets
-                        .push(Widget::Text(text, "text".to_string(), x as i32, y as i32));
+                    self.widgets.push(Widget::Text(
+                        text,
+                        Color::from_theme(self.lua, "text")?,
+                        x as i32,
+                        y as i32,
+                    ));
                 }
                 Ok(())
             })?;
@@ -190,7 +200,7 @@ struct Mouse {
 #[derive(Debug)]
 pub enum Widget<'lua> {
     Image(AnyUserData<'lua>, i32, i32),
-    Text(String, String, i32, i32),
+    Text(String, Color<'lua>, i32, i32),
 }
 
 fn fit_text(ctx: &GraphicsContext, text: &str, width: u32) -> Result<String> {

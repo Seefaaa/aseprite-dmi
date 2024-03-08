@@ -1,5 +1,7 @@
 use mlua::{chunk, AnyUserData, Lua, Result};
 
+use super::Color;
+
 pub struct GraphicsContext<'lua>(pub &'lua Lua, pub &'lua AnyUserData<'lua>);
 
 impl<'lua> GraphicsContext<'lua> {
@@ -21,13 +23,13 @@ impl<'lua> GraphicsContext<'lua> {
             })
             .eval()
     }
-    pub fn fill_text(&self, text: &str, color: &str, x: i32, y: i32) -> Result<()> {
+    pub fn fill_text(&self, text: &str, color: &Color, x: i32, y: i32) -> Result<()> {
         let ctx = self.1;
-        let color = color.to_string();
+        let color = &color.1;
         self.0
             .load(chunk! {
                 local ctx = $ctx
-                ctx.color = app.theme.color[$color]
+                ctx.color = $color
                 ctx:fillText($text, $x, $y)
             })
             .exec()?;
