@@ -1,4 +1,4 @@
-use mlua::{chunk, AnyUserData, ExternalResult, Function, IntoLua, Lua, Result};
+use mlua::{chunk, AnyUserData, Function, IntoLua, Lua, Result};
 
 pub struct Dialog<'lua>(&'lua Lua, pub AnyUserData<'lua>, AnyUserData<'lua>);
 

@@ -3,7 +3,7 @@ use mlua::{chunk, AnyUserData, Lua, Result};
 pub struct GraphicsContext<'lua>(pub &'lua Lua, pub &'lua AnyUserData<'lua>);
 
 impl<'lua> GraphicsContext<'lua> {
-    pub fn size(&self) -> Result<(i32, i32)> {
+    pub fn size(&self) -> Result<(u32, u32)> {
         let ctx = self.1;
         self.0
             .load(chunk! {
@@ -12,7 +12,7 @@ impl<'lua> GraphicsContext<'lua> {
             })
             .eval()
     }
-    pub fn measure_text(&self, text: &str) -> Result<(i32, i32)> {
+    pub fn _measure_text(&self, text: &str) -> Result<(u32, u32)> {
         let ctx = self.1;
         self.0
             .load(chunk! {
@@ -30,6 +30,36 @@ impl<'lua> GraphicsContext<'lua> {
                 local ctx = $ctx
                 ctx.color = app.theme.color[$color]
                 ctx:fillText($text, $x, $y)
+            })
+            .exec()?;
+        Ok(())
+    }
+    pub fn draw_image(&self, image: &AnyUserData, x: i32, y: i32) -> Result<()> {
+        let ctx = self.1;
+        self.0
+            .load(chunk! {
+                local ctx = $ctx
+                local image = $image
+                ctx:drawImage(image, image.bounds, Rectangle($x, $y, image.bounds.width, image.bounds.height))
+            })
+            .exec()?;
+        Ok(())
+    }
+    pub fn draw_theme_rect(
+        &self,
+        part: &str,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+    ) -> Result<()> {
+        let ctx = self.1;
+        let part = part.to_string();
+        self.0
+            .load(chunk! {
+                local ctx = $ctx
+                local part = $part
+                ctx:drawThemeRect(part, Rectangle($x, $y, $width, $height))
             })
             .exec()?;
         Ok(())

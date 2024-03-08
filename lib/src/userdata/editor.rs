@@ -1,31 +1,40 @@
 use mlua::{
-    AnyUserData, AnyUserDataExt, ExternalResult, Function, Lua, Nil, Result, UserData,
+    AnyUserData, AnyUserDataExt, ExternalResult, Function, Lua, Nil, Result, Table, UserData,
     UserDataFields, UserDataMethods, Value,
 };
+use std::cmp::max;
 
-use crate::aseprite::{Dialog, GraphicsContext, MouseButton, MouseEvent};
+use crate::aseprite::{Dialog, GraphicsContext, Image, MouseButton, MouseEvent};
 use crate::macros::safe_function;
 use crate::userdata::{Dmi, RefHolder};
 
+use super::State;
+
+const PADDING: u32 = 3;
+
 #[derive(Debug)]
 pub struct Editor<'lua> {
+    lua: &'lua Lua,
     filename: String,
     width: u32,
     height: u32,
     dialog: RefHolder<'lua>,
     dmi: RefHolder<'lua>,
     mouse: Mouse,
+    widgets: Vec<Widget<'lua>>,
 }
 
 impl<'a: 'static> Editor<'a> {
     pub fn open(lua: &'a Lua, filename: String) -> Result<AnyUserData<'a>> {
         let editor = lua.create_userdata(Self {
+            lua,
             filename: filename.clone(),
             width: 185,
             height: 215,
             dialog: RefHolder::new(lua)?,
             dmi: RefHolder::new(lua)?,
             mouse: Mouse::default(),
+            widgets: Vec::new(),
         })?;
 
         {
@@ -65,21 +74,73 @@ impl<'a: 'static> Editor<'a> {
         Ok(dialog.1)
     }
     fn on_paint(lua: &Lua, (this, ctx): (AnyUserData, AnyUserData)) -> Result<()> {
-        let this = this.borrow::<Editor>()?;
+        let mut this = this.borrow_mut::<Editor>()?;
         let ctx = GraphicsContext(lua, &ctx);
 
-        let dmi = this.dmi.get::<Value>()?;
-
-        if let Value::UserData(dmi) = dmi {
+        if let Value::UserData(dmi) = this.dmi.get::<Value>()? {
+            let (canvas_width, canvas_height) = ctx.size()?;
             let dmi = dmi.borrow::<Dmi>()?;
-            let (ctx_width, ctx_height) = ctx.size()?;
-            let (name_width, name_height) = ctx.measure_text(&dmi.name)?;
-            ctx.fill_text(
-                &dmi.name,
-                "text",
-                (ctx_width - name_width) / 2,
-                (ctx_height - name_height) / 2,
-            )?
+
+            this.width = canvas_width;
+            this.height = canvas_height;
+
+            if this.widgets.is_empty() {
+                this.create_widgets()?;
+            }
+
+            for widget in this.widgets.iter() {
+                match widget {
+                    Widget::_Text(text, color, x, y) => {
+                        ctx.fill_text(text, color, *x, *y)?;
+                    }
+                    Widget::State(image, x, y) => {
+                        ctx.draw_theme_rect(
+                            "sunken_normal",
+                            *x,
+                            *y,
+                            dmi.width + 4,
+                            dmi.height + 4,
+                        )?;
+                        ctx.draw_image(image, x + 2, y + 2)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+    fn create_widgets(&mut self) -> Result<()> {
+        self.widgets.clear();
+
+        if let Value::UserData(dmi) = self.dmi.get::<Value>()? {
+            let dmi = dmi.borrow::<Dmi>()?;
+            let states = dmi.states.get::<Table>()?;
+
+            let max_rows = max(self.width / dmi.width, 1);
+            let max_columns = max(self.height / dmi.height, 1);
+            let max_states = max_rows * (max_columns + 1);
+
+            states.for_each(|index: u32, state: AnyUserData| {
+                let index = index - 1;
+                if index <= max_states {
+                    let state = state.borrow::<State>()?;
+
+                    let width = dmi.width + 2 + PADDING;
+                    let height = dmi.height + 2 + PADDING;
+                    let x = width * (index % max_rows) + 1;
+                    let y = height * (index / max_rows) + 1;
+
+                    let image = Image::create(self.lua, dmi.width, dmi.height)?;
+                    let Some(frame) = state.frames.first() else {
+                        return Err("There is a state with no frames".to_string()).into_lua_err();
+                    };
+                    image.set_image(frame)?;
+
+                    self.widgets
+                        .push(Widget::State(image.1, x as i32, y as i32));
+                }
+                Ok(())
+            })?;
         }
 
         Ok(())
@@ -113,6 +174,12 @@ impl UserData for Editor<'static> {
 struct Mouse {
     x: u32,
     y: u32,
-    left: bool,
-    right: bool,
+    _left: bool,
+    _right: bool,
+}
+
+#[derive(Debug)]
+pub enum Widget<'lua> {
+    State(AnyUserData<'lua>, i32, i32),
+    _Text(String, String, i32, i32),
 }
