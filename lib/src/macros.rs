@@ -1,11 +1,21 @@
 use mlua::{FromLuaMulti, IntoLuaMulti, Lua, MultiValue, Result as LuaResult};
 
 macro_rules! lua_print {
-		($lua:ident, $($args:expr),*) => {
+		($lua:expr, $($args:expr),*) => {
 			if let Ok(print) = $lua.globals().get::<_, mlua::Function>("print") {
 				let _ = print.call::<_, ()>(format!($($args),*));
 			}
 		};
+}
+
+macro_rules! lua_alert {
+    ($lua:expr, $($args:expr),*) => {
+        if let Ok(app) = $lua.globals().get::<_, mlua::Table>("app") {
+            if let Ok(alert) = app.get::<_, mlua::Function>("alert") {
+                let _ = alert.call::<_, ()>(format!($($args),*));
+            }
+        }
+    };
 }
 
 pub fn safe_lua_function<'lua, A, R, F>(lua: &'lua Lua, func: F, multi: A) -> LuaResult<MultiValue>
@@ -35,4 +45,4 @@ macro_rules! create_safe_function {
     };
 }
 
-pub(crate) use {create_safe_function, lua_print, safe_function};
+pub(crate) use {create_safe_function, lua_alert, lua_print, safe_function};
