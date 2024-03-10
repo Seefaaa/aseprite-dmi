@@ -62,14 +62,23 @@ impl<'a: 'static> Editor<'a> {
         ref_holder.set(this)?;
 
         let this = ref_holder.get::<AnyUserData>()?;
-        let dialog = Dialog::create(lua, this, "Editor", Nil)?;
-
-        let this = ref_holder.get::<AnyUserData>()?;
         let width = this.get::<_, u32>("width")?;
         let height = this.get::<_, u32>("height")?;
         let on_paint = this.get::<_, Function>("on_paint")?;
         let on_mouse_move = this.get::<_, Function>("on_mouse_move")?;
 
+        let width = {
+            let this = this.borrow::<Editor>()?;
+            let dmi = this.dmi.get::<AnyUserData>()?;
+            let dmi = dmi.borrow::<Dmi>()?;
+            if dmi.width > width {
+                dmi.width + 6
+            } else {
+                width
+            }
+        };
+
+        let dialog = Dialog::create(lua, ref_holder.get::<AnyUserData>()?, "Editor", Nil)?;
         dialog.canvas(width, height, on_paint, on_mouse_move)?;
         dialog.button("Save", Nil)?;
         dialog.show(false)?;
