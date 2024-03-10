@@ -15,7 +15,7 @@ pub struct Dmi<'lua> {
     pub name: String,
     pub width: u32,
     pub height: u32,
-    pub states: RefHolder<'lua>,
+    pub states: RefHolder<'lua, Table<'lua>>,
 }
 
 impl<'lua: 'static> Dmi<'lua> {
@@ -33,7 +33,7 @@ impl<'lua: 'static> Dmi<'lua> {
             name: filename.clone(),
             width: 32,
             height: 32,
-            states: RefHolder::new(lua)?,
+            states: RefHolder::<Table>::new(lua)?,
         };
 
         dmi.states.set(lua.create_table()?)?;
@@ -46,7 +46,7 @@ impl<'lua: 'static> Dmi<'lua> {
         let grid_width = image.width() / dmi.width;
 
         let mut index = 0;
-        let states = dmi.states.get::<Table>()?;
+        let states = dmi.states.get()?;
         states.for_each(|_: usize, state: AnyUserData| {
             let mut state = state.borrow_mut::<State>()?;
             let frame_count = state.frame_count as usize;
@@ -95,7 +95,7 @@ impl<'lua: 'static> Dmi<'lua> {
             return Err(Error::MissingHeader)?;
         }
 
-        if lines.next().ok_or(Error::InvalidVersion)? != format!("version = {}", DMI_VERSION) {
+        if lines.next().ok_or(Error::InvalidVersion)? != format!("version = {DMI_VERSION}") {
             return Err(Error::InvalidVersion)?;
         }
 
@@ -151,7 +151,7 @@ impl<'lua: 'static> Dmi<'lua> {
             }
         }
 
-        let table = self.states.get::<Table>()?;
+        let table = self.states.get()?;
 
         for (index, state) in states.into_iter().enumerate() {
             table.raw_set(index + 1, lua.create_userdata(state)?)?;
@@ -166,7 +166,7 @@ impl<'a: 'static> UserData for Dmi<'a> {
         fields.add_field_method_get("name", |_, this| Ok(this.name.clone()));
         fields.add_field_method_get("width", |_, this| Ok(this.width));
         fields.add_field_method_get("height", |_, this| Ok(this.height));
-        fields.add_field_method_get("states", |_, this| this.states.get::<Table<'a>>());
+        fields.add_field_method_get("states", |_, this| this.states.get());
     }
 }
 

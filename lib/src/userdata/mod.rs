@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use mlua::{AnyUserData, FromLua, IntoLua, Lua, Result, UserData};
 
 mod dmi;
@@ -10,24 +12,21 @@ struct EmptyUserData;
 impl UserData for EmptyUserData {}
 
 #[derive(Debug)]
-pub struct RefHolder<'lua>(AnyUserData<'lua>);
+pub struct RefHolder<'lua, V>(AnyUserData<'lua>, PhantomData<V>);
 
-impl<'lua> RefHolder<'lua> {
-    pub fn new(lua: &Lua) -> Result<RefHolder> {
-        Ok(RefHolder(lua.create_userdata(EmptyUserData)?))
+impl<'lua, V: IntoLua<'lua> + FromLua<'lua>> RefHolder<'lua, V> {
+    pub fn new(lua: &'lua Lua) -> Result<RefHolder<'lua, V>> {
+        Ok(RefHolder::<V>(
+            lua.create_userdata(EmptyUserData)?,
+            PhantomData,
+        ))
     }
-    pub fn set<V>(&self, value: V) -> Result<()>
-    where
-        V: IntoLua<'lua>,
-    {
+    pub fn set(&self, value: V) -> Result<()> {
         self.0.set_user_value(value)
     }
-    pub fn get<V>(&self) -> Result<V>
-    where
-        V: FromLua<'lua>,
-    {
+    pub fn get(&self) -> Result<V> {
         self.0.user_value()
     }
 }
 
-impl UserData for RefHolder<'_> {}
+impl<V> UserData for RefHolder<'_, V> {}
