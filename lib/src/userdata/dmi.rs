@@ -18,8 +18,8 @@ pub struct Dmi<'lua> {
     pub states: RefHolder<'lua>,
 }
 
-impl<'a: 'static> Dmi<'a> {
-    pub fn open(lua: &'a Lua, filename: String) -> Result<AnyUserData<'a>> {
+impl<'lua: 'static> Dmi<'lua> {
+    pub fn open(lua: &'lua Lua, filename: String) -> Result<Dmi<'lua>> {
         let decoder = Decoder::new(File::open(&filename)?);
         let reader = decoder.read_info().map_err(ExternalError::PngDecoding)?;
         let chunk = reader
@@ -86,7 +86,7 @@ impl<'a: 'static> Dmi<'a> {
             Ok(())
         })?;
 
-        lua.create_userdata(dmi)
+        Ok(dmi)
     }
     fn set_metadata(&mut self, lua: &Lua, metadata: String) -> Result<()> {
         let mut lines = metadata.lines();

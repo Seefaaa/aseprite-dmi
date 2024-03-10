@@ -1,11 +1,9 @@
 use mlua::{AnyUserData, FromLua, IntoLua, Lua, Result, UserData};
 
 mod dmi;
-mod editor;
 mod state;
 
 pub use dmi::{Dmi, Error as DmiError};
-pub use editor::Editor;
 pub use state::State;
 struct EmptyUserData;
 

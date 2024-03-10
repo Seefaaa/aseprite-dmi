@@ -3,6 +3,9 @@
 local after_listener --[[@type number]]
 
 dofile("string.lua")
+dofile("classes/mouse.lua")
+dofile("classes/widget.lua")
+dofile("classes/editor.lua")
 
 --- Initializes the plugin. Called when the plugin is loaded.
 --- @param plugin Plugin The plugin object.

@@ -16,10 +16,36 @@ json = {}
 
 ------------------- CONSTRUCTORS -------------------
 
---- Creates a new Editor object.
+--- Creates a new editor.
 --- @param filename string
 --- @return Editor? editor
 function Editor(filename)
+	return {}
+end
+
+--- Creates a new image widget.
+--- @param image Image
+--- @param x integer
+--- @param y integer
+--- @return ImageWidget
+function ImageWidget(image, x, y)
+	return {}
+end
+
+--- Creates a new text widget.
+--- @param text string
+--- @param color Color
+--- @param x integer
+--- @param y integer
+--- @return TextWidget
+function TextWidget(text, color, x, y)
+	return {}
+end
+
+--- Creates a new Dmi object.
+--- @param filename string
+--- @return Dmi? dmi
+function Dmi(filename)
 	return {}
 end
 
@@ -351,8 +377,8 @@ WebSocketMessageType = {
 --- @field clone fun(self: Image): Image
 --- @field id number
 --- @field version number
---- @field width number
---- @field height number
+--- @field width integer
+--- @field height integer
 --- @field bounds Rectangle
 --- @field colorMode ColorMode
 --- @field spec ImageSpec
@@ -803,29 +829,7 @@ WebSocketMessageType = {
 ---| 'FRAGMENT'
 
 --- @class libdmi: table
---- @field new_file fun(name: string, width: number, height: number, temp: string): Dmi?, string? Creates a new DMI file. If fails, returns nil and an error message.
---- @field open_file fun(path: string, temp: string): Dmi?, string? Opens a DMI file. If fails, returns nil and an error message.
---- @field save_file fun(dmi: Dmi, filename: string): nil, string? Saves the DMI file. If fails, returns an error message.
---- @field new_state fun(width: number, height: number, temp: string): State?, string? Creates a new state. If fails, returns nil and an error message.
---- @field copy_state fun(state: State, temp: string): nil, string? Copies the state to the clipboard. If fails, returns an error message.
---- @field paste_state fun(width: number, height: number, temp: string): State?, string? Pastes the state from the clipboard. If fails, returns nil and an error message.
---- @field resize fun(dmi: Dmi, width: number, height: number, medhod: string): nil, string? Resizes the DMI file. If fails, returns an error message.
---- @field crop fun(dmi: Dmi, x: number, y: number, width: number, height: number): nil, string? Crops the DMI file. If fails, returns an error message.
---- @field expand fun(dmi: Dmi, x: number, y: number, width: number, height: number): nil, string? Expands the DMI file size. If fails, returns an error message.
---- @field overlay_color fun(r: number, g: number, b: number, width: number, height: number, ...: number): ...: number|nil Overlays the given bytes of an image on a plain color.
---- @field remove_dir fun(path: string, soft: boolean): nil, string? Removes a directory. If fails, returns an error message.
---- @field exists fun(path: string): boolean Returns true if the path points at an existing entity.
---- @field check_update fun(): boolean Return true if there is an update available.
---- @field instances fun(): number?, string? Return the number of Aseprite instances running.
---- @field save_dialog fun(title: string, filename: string, location: string): string?, string? Shows a save dialog. Returns the path of the file to save or empty string if the user cancels the dialog.
---- @field open_repo fun(path?: string): nil, string? Opens the repository in the default browser. If fails, returns an error message.
-
---- @class Editor: userdata
---- @field filename string The opened file name.
---- @field width number The width of the dialog.
---- @field height number The height of the dialog.
---- @field dialog Dialog The dialog of the editor.
---- @field dmi Dmi The opened DMI file.
+--- @field open fun(filename: string): Dmi?
 
 --- @class Dmi: userdata
 --- @field name string The name of the DMI file.
@@ -835,3 +839,4 @@ WebSocketMessageType = {
 
 --- @class State: userdata
 --- @field name string The name of the state.
+--- @field preview fun(self: State, r: integer, g: integer, b: integer): string

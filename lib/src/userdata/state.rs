@@ -1,4 +1,4 @@
-use image::DynamicImage;
+use image::{imageops, DynamicImage, ImageBuffer, Rgba};
 use mlua::UserData;
 
 #[derive(Debug)]
@@ -41,4 +41,31 @@ impl UserData for State {
         fields.add_field_method_get("rewind", |_, this| Ok(this.rewind));
         fields.add_field_method_get("movement", |_, this| Ok(this.movement));
     }
+    fn add_methods<'lua, M: mlua::prelude::LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+        methods.add_method("preview", |lua, this, (r, g, b): (u8, u8, u8)| {
+            let frame = &this.frames[0];
+
+            let mut bottom =
+                ImageBuffer::from_pixel(frame.width(), frame.height(), Rgba([r, g, b, 255]));
+            imageops::overlay(&mut bottom, frame, 0, 0);
+
+            let bytes = image_to_bytes(&DynamicImage::ImageRgba8(bottom));
+            let string = lua.create_string(&bytes)?;
+
+            Ok(string)
+        });
+    }
+}
+
+fn image_to_bytes(image: &DynamicImage) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity((image.width() * image.height() * 4) as usize);
+
+    for pixel in image.to_rgba8().pixels() {
+        bytes.push(pixel[0]);
+        bytes.push(pixel[1]);
+        bytes.push(pixel[2]);
+        bytes.push(pixel[3]);
+    }
+
+    bytes
 }

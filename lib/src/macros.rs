@@ -8,6 +8,7 @@ macro_rules! lua_print {
 		};
 }
 
+#[allow(unused_macros)]
 macro_rules! lua_alert {
     ($lua:expr, $($args:expr),*) => {
         if let Ok(app) = $lua.globals().get::<_, mlua::Table>("app") {
@@ -45,4 +46,5 @@ macro_rules! create_safe_function {
     };
 }
 
+#[allow(unused_imports)]
 pub(crate) use {create_safe_function, lua_alert, lua_print, safe_function};
