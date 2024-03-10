@@ -18,7 +18,7 @@ pub struct Dmi<'lua> {
     pub states: RefHolder<'lua, Table<'lua>>,
 }
 
-impl<'lua: 'static> Dmi<'lua> {
+impl<'lua> Dmi<'lua> {
     pub fn open(lua: &'lua Lua, filename: String) -> Result<Dmi<'lua>> {
         let decoder = Decoder::new(File::open(&filename)?);
         let reader = decoder.read_info().map_err(ExternalError::PngDecoding)?;
@@ -161,7 +161,7 @@ impl<'lua: 'static> Dmi<'lua> {
     }
 }
 
-impl<'a: 'static> UserData for Dmi<'a> {
+impl UserData for Dmi<'static> {
     fn add_fields<'lua, F: UserDataFields<'lua, Self>>(fields: &mut F) {
         fields.add_field_method_get("name", |_, this| Ok(this.name.clone()));
         fields.add_field_method_get("width", |_, this| Ok(this.width));

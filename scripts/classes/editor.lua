@@ -1,8 +1,8 @@
 --- @class Editor: table
 --- @field filename string
+--- @field dmi Dmi
 --- @field width integer
 --- @field height integer
---- @field dmi Dmi
 --- @field widgets (Widget)[]
 --- @field dialog Dialog
 --- @field mouse Mouse
@@ -16,22 +16,52 @@ local TEXT_HEIGHT = 5
 local TEXT_PADDING_TOP = 5
 local TEXT_PADDING_BOTTOM = 7
 
-local DEFAULT_WIDTH = 5 * (32 + SUNKEN_PADDING + COLUMN_SPACE) - COLUMN_SPACE + CANVAS_PADDING * 2
-local DEFAULT_HEIGHT = 4 * (32 + SUNKEN_PADDING + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) -
-		math.floor(TEXT_PADDING_BOTTOM / 2) + CANVAS_PADDING * 2
+local WIDTH = function(width) return 5 * (width + SUNKEN_PADDING + COLUMN_SPACE) - COLUMN_SPACE + CANVAS_PADDING * 2 end
+local HEIGHT = function(height)
+	return 4 * (height + SUNKEN_PADDING + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) -
+			math.floor(TEXT_PADDING_BOTTOM / 2) + CANVAS_PADDING * 2
+end
+
+local DEFAULT_WIDTH = WIDTH(32)
+local DEFAULT_HEIGHT = HEIGHT(32)
 
 function Editor.__call(self, filename)
 	local self = setmetatable({}, getmetatable(self)) --[[@as Editor]]
 
 	self.filename = filename
-	self.width = DEFAULT_WIDTH
-	self.height = DEFAULT_HEIGHT
 	self.dmi = assert(libdmi.open(filename))
+	self:default_size()
 	self.widgets = {}
 	self.dialog = self:create_dialog()
 	self.mouse = Mouse()
 
 	return self
+end
+
+function Editor:default_size()
+	if not self.dmi then return end
+
+	local max_width = app.window.width * 0.8
+	local max_height = app.window.height * 0.8
+
+	if self.dmi.width < max_width then
+		local width = WIDTH(self.dmi.width)
+		if width < max_width then
+			self.width = width > DEFAULT_WIDTH and width or DEFAULT_WIDTH
+		else
+			local width = self.dmi.width + SUNKEN_PADDING + CANVAS_PADDING * 2
+			self.width = width > DEFAULT_WIDTH and (width < max_width and width or max_width) or DEFAULT_WIDTH
+		end
+	else
+		self.width = max_width
+	end
+
+	if self.dmi.height < max_height then
+		local height = HEIGHT(self.dmi.height)
+		self.height = height < max_height and (height > DEFAULT_HEIGHT and height or DEFAULT_HEIGHT) or max_height
+	else
+		self.height = max_height
+	end
 end
 
 function Editor:create_dialog()
@@ -40,7 +70,7 @@ function Editor:create_dialog()
 	}
 
 	dialog:canvas {
-		width = self.width >= self.dmi.width and self.width or self.dmi.width + SUNKEN_PADDING + CANVAS_PADDING * 2,
+		width = self.width,
 		height = self.height,
 		onpaint = function(ev) self:on_paint(ev.context) end,
 	}
@@ -96,7 +126,9 @@ end
 
 --- @param ctx GraphicsContext
 function Editor:create_widgets(ctx)
-	self.widgets = {}
+	for _ = 1, #self.widgets, 1 do
+		table.remove(self.widgets, 1)
+	end
 
 	local width = self.dmi.width
 	local height = self.dmi.height
@@ -105,9 +137,9 @@ function Editor:create_widgets(ctx)
 	local widget_height = height + SUNKEN_PADDING
 
 	local max_rows = math.max(math.floor(self.width / widget_width), 1)
-	local max_cols = math.max(math.floor(self.height / widget_height), 1)
+	local max_cols = math.max(math.floor(self.height / widget_height) + 1, 2)
 
-	local max_index = max_rows * (max_cols + 1);
+	local max_index = max_rows * max_cols;
 
 	for index, state in ipairs(self.dmi.states) do
 		if index > max_index then
@@ -117,7 +149,7 @@ function Editor:create_widgets(ctx)
 		index = index - 1
 
 		local x = (widget_width + COLUMN_SPACE) * (index % max_rows) + CANVAS_PADDING
-		local y = (widget_height + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) * math.floor(index / max_cols) +
+		local y = (widget_height + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) * math.floor(index / max_rows) +
 				CANVAS_PADDING
 
 		local background_color = app.theme.color.face
