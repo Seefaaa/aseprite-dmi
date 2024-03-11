@@ -17,34 +17,47 @@ json = {}
 ------------------- CONSTRUCTORS -------------------
 
 --- Creates a new editor.
---- @param filename string
---- @return Editor? editor
+--- @param filename string The filename of the DMI file to open.
+--- @return Editor? editor The editor object.
 function Editor(filename)
 	return {}
 end
 
 --- Creates a new image widget.
---- @param image Image
---- @param x integer
---- @param y integer
---- @return ImageWidget
-function ImageWidget(image, x, y)
+--- @param image Image The image to draw.
+--- @param x integer Position on the x-axis.
+--- @param y integer Position on the y-axis.
+--- @param width integer Width of the widget.
+--- @param height integer Height of the widget.
+--- @return ImageWidget widget The image widget.
+function ImageWidget(image, x, y, width, height)
 	return {}
 end
 
 --- Creates a new text widget.
---- @param text string
---- @param color Color
---- @param x integer
---- @param y integer
---- @return TextWidget
-function TextWidget(text, color, x, y)
+--- @param text string The text to draw.
+--- @param color Color The color of the text.
+--- @param x integer Position on the x-axis.
+--- @param y integer Position on the y-axis.
+--- @param width integer Width of the widget.
+--- @param height integer Height of the widget.
+--- @param hovered_text string The text to draw when the mouse is hovering over the widget.
+--- @param hovered_x integer The x position of the hovered text.
+--- @param hovered_width integer The width of the hovered text.
+--- @return TextWidget widget The text widget.
+function TextWidget(text, color, x, y, width, height, hovered_text, hovered_x, hovered_width)
+	return {}
+end
+
+--- Creates a new mouse object.
+--- @return Mouse mouse The mouse object.
+function Mouse()
 	return {}
 end
 
 --- Creates a new Dmi object.
---- @param filename string
---- @return Dmi? dmi
+--- @param filename string The filename of the DMI file to open.
+--- @return Dmi? dmi The Dmi object.
 function Dmi(filename)
 	return {}
 end

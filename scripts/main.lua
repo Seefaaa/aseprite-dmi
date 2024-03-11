@@ -3,6 +3,7 @@
 local after_listener --[[@type number]]
 
 dofile("string.lua")
+dofile("table.lua")
 dofile("classes/mouse.lua")
 dofile("classes/widget.lua")
 dofile("classes/editor.lua")

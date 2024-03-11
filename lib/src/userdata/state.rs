@@ -1,5 +1,5 @@
 use image::{imageops, DynamicImage, ImageBuffer, Rgba};
-use mlua::UserData;
+use mlua::{UserData, UserDataFields, UserDataMethods};
 
 #[derive(Debug)]
 pub struct State {
@@ -31,7 +31,7 @@ impl State {
 }
 
 impl UserData for State {
-    fn add_fields<'lua, F: mlua::prelude::LuaUserDataFields<'lua, Self>>(fields: &mut F) {
+    fn add_fields<'lua, F: UserDataFields<'lua, Self>>(fields: &mut F) {
         fields.add_field_method_get("name", |_, this| Ok(this.name.clone()));
         fields.add_field_method_get("dirs", |_, this| Ok(this.dirs));
         // fields.add_field_method_get("frames", |_, this| Ok(this.frames.clone()));
@@ -41,7 +41,7 @@ impl UserData for State {
         fields.add_field_method_get("rewind", |_, this| Ok(this.rewind));
         fields.add_field_method_get("movement", |_, this| Ok(this.movement));
     }
-    fn add_methods<'lua, M: mlua::prelude::LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_method("preview", |lua, this, (r, g, b): (u8, u8, u8)| {
             let frame = &this.frames[0];
 
@@ -49,10 +49,7 @@ impl UserData for State {
                 ImageBuffer::from_pixel(frame.width(), frame.height(), Rgba([r, g, b, 255]));
             imageops::overlay(&mut bottom, frame, 0, 0);
 
-            let bytes = image_to_bytes(bottom);
-            let string = lua.create_string(&bytes)?;
-
-            Ok(string)
+            lua.create_string(image_to_bytes(bottom))
         });
     }
 }
