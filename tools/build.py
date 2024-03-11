@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import json
 import os
 import shutil
 import subprocess
@@ -135,5 +136,11 @@ if REPLACE:
     if os.path.exists(extension_dir):
         shutil.rmtree(extension_dir)
     shutil.copytree(unzipped_dir, extension_dir)
+    info_json = { "installedFiles": [] }
+    for dirpath, dirnames, filenames in os.walk(extension_dir):
+        for filename in filenames:
+            info_json["installedFiles"].append(os.path.relpath(os.path.join(dirpath, filename), extension_dir).replace("\\", "/"))
+    with open(os.path.join(extension_dir, "__info.json"), "w") as f:
+        f.write(json.dumps(info_json, indent=None))
 
 print("Build completed successfully.")
