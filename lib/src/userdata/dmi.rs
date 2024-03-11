@@ -1,25 +1,29 @@
 use image::io::Reader as ImageReader;
-use mlua::{AnyUserData, Lua, Result, Table, UserData, UserDataFields};
+use mlua::{Lua, Result, UserData, UserDataFields};
 use png::Decoder;
-use std::{cmp::Ordering, fs::File};
+use std::cell::RefCell;
+use std::cmp::Ordering;
+use std::fs::File;
+use std::path::Path;
+use std::rc::Rc;
 use thiserror::Error;
 
 use crate::errors::ExternalError;
 
-use super::{RefHolder, State};
+use super::State;
 
 const DMI_VERSION: &str = "4.0";
 
 #[derive(Debug)]
-pub struct Dmi<'lua> {
+pub struct Dmi {
     pub name: String,
     pub width: u32,
     pub height: u32,
-    pub states: RefHolder<'lua, Table<'lua>>,
+    pub states: Vec<Rc<RefCell<State>>>,
 }
 
-impl<'lua> Dmi<'lua> {
-    pub fn open(lua: &'lua Lua, filename: String) -> Result<Dmi<'lua>> {
+impl Dmi {
+    pub fn open(_: &Lua, filename: String) -> Result<Dmi> {
         let decoder = Decoder::new(File::open(&filename)?);
         let reader = decoder.read_info().map_err(ExternalError::PngDecoding)?;
         let chunk = reader
@@ -29,15 +33,7 @@ impl<'lua> Dmi<'lua> {
             .ok_or(Error::MissingZTXT)?;
         let metadata = chunk.get_text().map_err(ExternalError::PngDecoding)?;
 
-        let mut dmi = Self {
-            name: filename.clone(),
-            width: 32,
-            height: 32,
-            states: RefHolder::<Table>::new(lua)?,
-        };
-
-        dmi.states.set(lua.create_table()?)?;
-        dmi.set_metadata(lua, metadata)?;
+        let dmi = Self::from_metadata(filename.clone(), metadata)?;
 
         let mut reader = ImageReader::open(&filename).map_err(ExternalError::Io)?;
         reader.set_format(image::ImageFormat::Png);
@@ -46,9 +42,8 @@ impl<'lua> Dmi<'lua> {
         let grid_width = image.width() / dmi.width;
 
         let mut index = 0;
-        let states = dmi.states.get()?;
-        states.for_each(|_: usize, state: AnyUserData| {
-            let mut state = state.borrow_mut::<State>()?;
+        for state in dmi.states.iter() {
+            let mut state = state.borrow_mut();
             let frame_count = state.frame_count as usize;
             if !state.delays.is_empty() {
                 let delay_count = state.delays.len();
@@ -82,13 +77,24 @@ impl<'lua> Dmi<'lua> {
                     index += 1;
                 }
             }
-
-            Ok(())
-        })?;
+        }
 
         Ok(dmi)
     }
-    fn set_metadata(&mut self, lua: &Lua, metadata: String) -> Result<()> {
+    fn from_metadata(filename: String, metadata: String) -> Result<Self> {
+        let filename = Path::new(&filename)
+            .file_stem()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+
+        let mut dmi = Self {
+            name: filename,
+            width: 32,
+            height: 32,
+            states: Vec::new(),
+        };
+
         let mut lines = metadata.lines();
 
         if lines.next().ok_or(Error::MissingHeader)? != "# BEGIN DMI" {
@@ -113,8 +119,8 @@ impl<'lua> Dmi<'lua> {
             );
 
             match key {
-                "width" => self.width = value.parse().map_err(ExternalError::ParseInt)?,
-                "height" => self.height = value.parse().map_err(ExternalError::ParseInt)?,
+                "width" => dmi.width = value.parse().map_err(ExternalError::ParseInt)?,
+                "height" => dmi.height = value.parse().map_err(ExternalError::ParseInt)?,
                 "state" => states.push(State::new(value.trim_matches('"').into())),
                 "dirs" => {
                     states.last_mut().ok_or(Error::OutOfOrder)?.dirs =
@@ -151,22 +157,20 @@ impl<'lua> Dmi<'lua> {
             }
         }
 
-        let table = self.states.get()?;
-
-        for (index, state) in states.into_iter().enumerate() {
-            table.raw_set(index + 1, lua.create_userdata(state)?)?;
+        for state in states {
+            dmi.states.push(Rc::new(RefCell::new(state)));
         }
 
-        Ok(())
+        Ok(dmi)
     }
 }
 
-impl UserData for Dmi<'static> {
+impl UserData for Dmi {
     fn add_fields<'lua, F: UserDataFields<'lua, Self>>(fields: &mut F) {
         fields.add_field_method_get("name", |_, this| Ok(this.name.clone()));
         fields.add_field_method_get("width", |_, this| Ok(this.width));
         fields.add_field_method_get("height", |_, this| Ok(this.height));
-        fields.add_field_method_get("states", |_, this| this.states.get());
+        fields.add_field_method_get("states", |_, this| Ok(this.states.clone()));
     }
 }
 

@@ -49,7 +49,7 @@ impl UserData for State {
                 ImageBuffer::from_pixel(frame.width(), frame.height(), Rgba([r, g, b, 255]));
             imageops::overlay(&mut bottom, frame, 0, 0);
 
-            let bytes = image_to_bytes(&DynamicImage::ImageRgba8(bottom));
+            let bytes = image_to_bytes(bottom);
             let string = lua.create_string(&bytes)?;
 
             Ok(string)
@@ -57,10 +57,10 @@ impl UserData for State {
     }
 }
 
-fn image_to_bytes(image: &DynamicImage) -> Vec<u8> {
+fn image_to_bytes(image: ImageBuffer<Rgba<u8>, Vec<u8>>) -> Vec<u8> {
     let mut bytes = Vec::with_capacity((image.width() * image.height() * 4) as usize);
 
-    for pixel in image.to_rgba8().pixels() {
+    for pixel in image.pixels() {
         bytes.push(pixel[0]);
         bytes.push(pixel[1]);
         bytes.push(pixel[2]);

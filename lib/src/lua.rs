@@ -4,7 +4,7 @@ use crate::macros::create_safe_function;
 use crate::userdata::Dmi;
 
 #[mlua::lua_module(name = "dmi_module")]
-fn module(lua: &'static Lua) -> Result<bool> {
+fn module(lua: &Lua) -> Result<bool> {
     let module = lua.create_table()?;
     module.set("open", create_safe_function!(lua, Dmi::open)?)?;
 
