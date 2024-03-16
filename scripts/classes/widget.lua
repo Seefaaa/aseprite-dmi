@@ -3,6 +3,7 @@
 --- @field y integer Position of the widget on the y-axis.
 --- @field width integer Width of the widget.
 --- @field height integer Height of the widget.
+--- @field on_click? fun(self: Widget, ev: MouseEvent) Function to call when the widget is clicked.
 Widget = {}
 Widget.__index = Widget
 
@@ -22,7 +23,8 @@ ImageWidget.__index = ImageWidget
 --- @param y integer
 --- @param width integer
 --- @param height integer
-function ImageWidget.__call(self, image, x, y, width, height)
+--- @param on_click? fun(self: Widget, ev: MouseEvent)
+function ImageWidget.__call(self, image, x, y, width, height, on_click)
 	local self = setmetatable({}, getmetatable(self)) --[[@as ImageWidget]]
 
 	self.image = image
@@ -30,6 +32,7 @@ function ImageWidget.__call(self, image, x, y, width, height)
 	self.y = y
 	self.width = width
 	self.height = height
+	self.on_click = on_click
 
 	return self
 end

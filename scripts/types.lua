@@ -29,8 +29,9 @@ end
 --- @param y integer Position on the y-axis.
 --- @param width integer Width of the widget.
 --- @param height integer Height of the widget.
+--- @param on_click? fun(self: Widget, ev: MouseEvent) Function to call when the widget is clicked.
 --- @return ImageWidget widget The image widget.
-function ImageWidget(image, x, y, width, height)
+function ImageWidget(image, x, y, width, height, on_click)
 	return {}
 end
 

@@ -103,6 +103,8 @@ function Editor:create_dialog()
 		height = self.height,
 		onpaint = function(ev) self:on_paint(ev.context) end,
 		onmousemove = function(ev) self:on_mouse_move(ev) end,
+		onmousedown = function(ev) self:on_mouse_down(ev) end,
+		onmouseup = function(ev) self:on_mouse_up(ev) end,
 	}
 
 	dialog:button {
@@ -212,7 +214,13 @@ function Editor:create_widgets(ctx)
 		local image = Image(width, height)
 		image.bytes = state:preview(background_color.red, background_color.green, background_color.blue)
 
-		local widget = ImageWidget(image, x, y, widget_width, widget_height)
+		--- @param self ImageWidget
+		--- @param ev MouseEvent
+		local on_click = function(self, ev)
+			app.alert("Click on " .. state.name)
+		end
+
+		local widget = ImageWidget(image, x, y, widget_width, widget_height, on_click)
 
 		table.insert(self.widgets, widget)
 
@@ -274,6 +282,35 @@ function Editor:on_mouse_move(ev)
 	self.hovered_widgets = hovered_widgets
 
 	if needs_repaint then self.dialog:repaint() end
+end
+
+--- Handles the mouse down event in the editor.
+--- @param ev MouseEvent The mouse event object.
+function Editor:on_mouse_down(ev)
+	if ev.button == MouseButton.Left then
+		self.mouse.left = true
+	elseif ev.button == MouseButton.Right then
+		self.mouse.right = true
+	end
+end
+
+--- Handles the mouse up event in the editor.
+--- @param ev MouseEvent The mouse event object.
+function Editor:on_mouse_up(ev)
+	if ev.button == MouseButton.LEFT or ev.button == MouseButton.RIGHT then
+		for _, widget in ipairs(self.widgets) do
+			local bounds = Rectangle(widget.x, widget.y, widget.width, widget.height)
+			if bounds:contains(Point(ev.x, ev.y)) then
+				widget:on_click(ev)
+			end
+		end
+	end
+
+	if ev.button == MouseButton.Left then
+		self.mouse.left = false
+	elseif ev.button == MouseButton.Right then
+		self.mouse.right = false
+	end
 end
 
 Editor = setmetatable({}, Editor)
