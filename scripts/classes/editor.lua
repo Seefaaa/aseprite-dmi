@@ -5,6 +5,8 @@
 --- @field height integer The height of the editor.
 --- @field widgets Widget[] The widgets to be shown in the dialog.
 --- @field hovered_widgets Widget[] The widgets that are currently hovered by the mouse.
+--- @field max_rows integer The maximum amount of rows to show in the editor.
+--- @field max_cols integer The maximum amount of columns to show in the editor.
 --- @field mouse Mouse The mouse object.
 --- @field dialog Dialog The dialog object.
 Editor = {}
@@ -32,23 +34,44 @@ local TEXT_PADDING_BOTTOM = 7
 local HOVERED_TEXT_PADDING = 5
 
 --- Calculates the width of the editor based on the width of the states.
---- @return integer
-local WIDTH = function(width)
-	return 5 * (width + SUNKEN_PADDING + COLUMN_SPACE) - COLUMN_SPACE + CANVAS_PADDING * 2
+--- @param width integer The width of the states.
+--- @param cols integer The amount of columns.
+--- @return integer width The width of the editor.
+local WIDTH = function(width, cols)
+	return cols * (width + SUNKEN_PADDING + COLUMN_SPACE) - COLUMN_SPACE + CANVAS_PADDING * 2
 end
 
 --- Calculates the height of the editor based on the height of the states.
---- @return integer
-local HEIGHT = function(height)
-	return 4 * (height + SUNKEN_PADDING + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) -
+--- @param height integer The height of the states.
+--- @param rows integer The amount of rows.
+--- @return integer height The height of the editor.
+local HEIGHT = function(height, rows)
+	return rows * (height + SUNKEN_PADDING + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) -
 			math.floor(TEXT_PADDING_BOTTOM / 2) + CANVAS_PADDING * 2
 end
 
+--- Calculates the amount of columns that can fit in the editor based on the width of the states.
+--- @param width integer The width of the editor.
+--- @param dmi_width integer The width of the states.
+--- @return integer cols The amount of columns that can fit in the editor.
+local REVERSE_WIDTH = function(width, dmi_width)
+	return math.floor((width + COLUMN_SPACE - CANVAS_PADDING * 2) / (dmi_width + SUNKEN_PADDING + COLUMN_SPACE))
+end
+
+--- Calculates the amount of rows that can fit in the editor based on the height of the states.
+--- @param height integer The height of the editor.
+--- @param dmi_height integer The height of the states.
+--- @return integer rows The amount of rows that can fit in the editor.
+local REVERSE_HEIGHT = function(height, dmi_height)
+	return math.floor((height - TEXT_PADDING_BOTTOM / 2 - CANVAS_PADDING * 2) /
+		(dmi_height + SUNKEN_PADDING + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM))
+end
+
 --- The default width for a 32x?? DMI file.
-local DEFAULT_WIDTH = WIDTH(32)
+local DEFAULT_WIDTH = WIDTH(32, 5)
 
 --- The default height for a ??x32 DMI file.
-local DEFAULT_HEIGHT = HEIGHT(32)
+local DEFAULT_HEIGHT = HEIGHT(32, 4)
 
 function Editor.__call(self, filename)
 	local self = setmetatable({}, getmetatable(self)) --[[@as Editor]]
@@ -58,6 +81,8 @@ function Editor.__call(self, filename)
 	self:default_size()
 	self.widgets = {}
 	self.hovered_widgets = {}
+	self.max_rows = 0
+	self.max_cols = 0
 	self.mouse = Mouse()
 	self.dialog = self:create_dialog()
 
@@ -72,7 +97,7 @@ function Editor:default_size()
 	local max_height = app.window.height * 0.8
 
 	if self.dmi.width < max_width then
-		local width = WIDTH(self.dmi.width)
+		local width = WIDTH(self.dmi.width, 4)
 		if width < max_width then
 			self.width = width > DEFAULT_WIDTH and width or DEFAULT_WIDTH
 		else
@@ -84,7 +109,7 @@ function Editor:default_size()
 	end
 
 	if self.dmi.height < max_height then
-		local height = HEIGHT(self.dmi.height)
+		local height = HEIGHT(self.dmi.height, 5)
 		self.height = height < max_height and (height > DEFAULT_HEIGHT and height or DEFAULT_HEIGHT) or max_height
 	else
 		self.height = max_height
@@ -131,11 +156,19 @@ function Editor:on_paint(ctx)
 	self.width = ctx.width
 	self.height = ctx.height
 
-	local hovered_texts = {} --[[@type TextWidget[] ]]
+	local max_rows = math.max(REVERSE_HEIGHT(self.height, self.dmi.height) + 1, 2)
+	local max_cols = math.max(REVERSE_WIDTH(self.width, self.dmi.width), 1)
 
-	if #self.widgets == 0 then
+	if max_rows ~= self.max_rows or max_cols ~= self.max_cols then
+		self.max_rows = max_rows
+		self.max_cols = max_cols
 		self:create_widgets(ctx)
+		if self.dialog then
+			self.dialog:repaint()
+		end
 	end
+
+	local hovered_texts = {} --[[@type TextWidget[] ]]
 
 	for _, widget in ipairs(self.widgets) do
 		if is_widget(widget, ImageWidget) then
@@ -195,18 +228,15 @@ function Editor:create_widgets(ctx)
 	local widget_width = width + SUNKEN_PADDING
 	local widget_height = height + SUNKEN_PADDING
 
-	local max_rows = math.max(math.floor(self.width / widget_width), 1)
-	local max_cols = math.max(math.floor(self.height / widget_height) + 1, 2)
-
-	local max_index = max_rows * max_cols;
+	local max_index = self.max_rows * self.max_cols;
 
 	for index, state in ipairs(self.dmi.states) do
 		if index > max_index then break end
 
 		index = index - 1
 
-		local x = (widget_width + COLUMN_SPACE) * (index % max_rows) + CANVAS_PADDING
-		local y = (widget_height + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) * math.floor(index / max_rows) +
+		local x = (widget_width + COLUMN_SPACE) * (index % self.max_cols) + CANVAS_PADDING
+		local y = (widget_height + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) * math.floor(index / self.max_cols) +
 				CANVAS_PADDING
 
 		local background_color = app.theme.color.face
