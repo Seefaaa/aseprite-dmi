@@ -51,6 +51,11 @@ impl UserData for State {
 
             lua.create_string(image_to_bytes(bottom))
         });
+        methods.add_method("frame", |lua, this, index: usize| {
+            let frame = &this.frames[index];
+
+            lua.create_string(image_to_bytes(frame.to_rgba8()))
+        });
     }
 }
 

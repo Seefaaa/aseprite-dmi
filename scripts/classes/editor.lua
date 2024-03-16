@@ -214,10 +214,12 @@ function Editor:create_widgets(ctx)
 		local image = Image(width, height)
 		image.bytes = state:preview(background_color.red, background_color.green, background_color.blue)
 
-		--- @param self ImageWidget
+		--- @param widget ImageWidget
 		--- @param ev MouseEvent
-		local on_click = function(self, ev)
-			app.alert("Click on " .. state.name)
+		local on_click = function(widget, ev)
+			if ev.button == MouseButton.LEFT then
+				self:open_state(state)
+			end
 		end
 
 		local widget = ImageWidget(image, x, y, widget_width, widget_height, on_click)
@@ -311,6 +313,88 @@ function Editor:on_mouse_up(ev)
 	elseif ev.button == MouseButton.Right then
 		self.mouse.right = false
 	end
+end
+
+local DIRECTION_NAMES = { "South", "North", "East", "West", "Southeast", "Southwest", "Northeast", "Northwest" }
+
+--- Loads the palette of the sprite while filtering out the transparent color. If the palette is empty, the default palette is loaded.
+--- @param sprite Sprite
+local load_palette = function(sprite)
+	for _, cel in ipairs(sprite.cels) do
+		if not cel.image:isEmpty() then
+			app.command.ColorQuantization { ui = false, withAlpha = false }
+			local palette = sprite.palettes[1]
+
+			if palette:getColor(0).alpha == 0 then
+				if #palette > 1 then
+					local colors = {} --[[ @type Color[] ]]
+					for i = 1, #palette - 1, 1 do
+						table.insert(colors, palette:getColor(i))
+					end
+					local palette = Palette(#colors)
+					for i, color in ipairs(colors) do
+						palette:setColor(i - 1, color)
+					end
+					sprite:setPalette(palette)
+				else
+					app.command.LoadPalette { ui = false, preset = "default" }
+				end
+			end
+
+			return
+		end
+	end
+
+	app.command.LoadPalette { ui = false, preset = "default" }
+end
+
+--- Opens a state in the Aseprite editor by creating a new sprite and populating it with frames and layers based on the provided state.
+--- @param state State The state to open.
+function Editor:open_state(state)
+	local sprite = Sprite(self.dmi.width, self.dmi.height, ColorMode.RGB)
+	sprite.filename = state.name
+
+	app.transaction("Load State", function()
+		while #sprite.layers < state.dirs do
+			sprite:newLayer().isVisible = false
+		end
+
+		local frame_count = state.frame_count
+		if frame_count > 1 then
+			sprite:newFrame(frame_count - 1)
+		end
+
+		local delays = state.delays
+		if #delays > 1 then
+			for i, frame in ipairs(sprite.frames) do
+				frame.duration = (delays[i] or 1) / 10
+			end
+		end
+
+		sprite.layers[1].isVisible = false
+		sprite.layers[#sprite.layers].isVisible = true
+
+		local index = 1
+		for frame = 1, #sprite.frames, 1 do
+			for layer = #sprite.layers, 1, -1 do
+				local name = DIRECTION_NAMES[#sprite.layers - layer + 1]
+				local layer = sprite.layers[layer]
+				local frame = sprite.frames[frame]
+
+				local image = Image(self.dmi.width, self.dmi.height)
+				image.bytes = state:frame(index - 1)
+
+				layer.name = name
+				sprite:newCel(layer, frame, image, Point(0, 0))
+
+				index = index + 1
+			end
+		end
+
+		app.frame = 1
+		load_palette(sprite)
+		app.command.FitScreen()
+	end)
 end
 
 Editor = setmetatable({}, Editor)

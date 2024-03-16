@@ -453,7 +453,7 @@ WebSocketMessageType = {
 --- @field newFrame (fun(self: Sprite, frameNumber: number): Frame)|(fun(self: Sprite, frame: Frame): Frame))
 --- @field newEmptyFrame fun(self: Sprite, frameNumber: number): Frame
 --- @field deleteFrame function
---- @field newCel function
+--- @field newCel fun(self: Sprite, layer: Layer, frame: Frame, image?: Image, position?: Point): Cel
 --- @field deleteCel function
 --- @field newTag function
 --- @field deleteTag function
@@ -849,8 +849,12 @@ WebSocketMessageType = {
 --- @field name string The name of the DMI file.
 --- @field width number The width of the DMI file.
 --- @field height number The height of the DMI file.
---- @field states (State)[] The states of the DMI file.
+--- @field states State[] The states of the DMI file.
 
 --- @class State: userdata
 --- @field name string The name of the state.
---- @field preview fun(self: State, r: integer, g: integer, b: integer): string
+--- @field dirs integer The number of directions in the state.
+--- @field frame_count integer The number of frames in the state.
+--- @field delays number[] The delays between frames in the state.
+--- @field preview fun(self: State, r: integer, g: integer, b: integer): string Returns a preview of the state in Aseprite's image bytes format.
+--- @field frame fun(self: State, index: integer): string Returns the frame at the given index in Aseprite's image bytes format.
