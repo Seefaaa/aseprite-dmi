@@ -25,28 +25,23 @@ end
 
 --- Creates a new image widget.
 --- @param image Image The image to draw.
---- @param x integer Position on the x-axis.
---- @param y integer Position on the y-axis.
 --- @param width integer Width of the widget.
 --- @param height integer Height of the widget.
 --- @param on_click? fun(self: Widget, ev: MouseEvent) Function to call when the widget is clicked.
 --- @return ImageWidget widget The image widget.
-function ImageWidget(image, x, y, width, height, on_click)
+function ImageWidget(image, width, height, on_click)
 	return {}
 end
 
 --- Creates a new text widget.
 --- @param text string The text to draw.
 --- @param color Color The color of the text.
---- @param x integer Position on the x-axis.
---- @param y integer Position on the y-axis.
 --- @param width integer Width of the widget.
 --- @param height integer Height of the widget.
 --- @param hovered_text string The text to draw when the mouse is hovering over the widget.
---- @param hovered_x integer The x position of the hovered text.
 --- @param hovered_width integer The width of the hovered text.
 --- @return TextWidget widget The text widget.
-function TextWidget(text, color, x, y, width, height, hovered_text, hovered_x, hovered_width)
+function TextWidget(text, color, width, height, hovered_text, hovered_width)
 	return {}
 end
 

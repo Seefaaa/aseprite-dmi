@@ -159,26 +159,58 @@ function Editor:on_paint(ctx)
 	local max_rows = math.max(REVERSE_HEIGHT(self.height, self.dmi.height) + 1, 2)
 	local max_cols = math.max(REVERSE_WIDTH(self.width, self.dmi.width), 1)
 
+	local needs_reposition = false
+
 	if max_rows ~= self.max_rows or max_cols ~= self.max_cols then
 		self.max_rows = max_rows
 		self.max_cols = max_cols
+		needs_reposition = true
+	end
+
+	if #self.widgets == 0 then
 		self:create_widgets(ctx)
-		if self.dialog then
-			self.dialog:repaint()
-		end
 	end
 
 	local hovered_texts = {} --[[@type TextWidget[] ]]
 
+	local index = 0
+	local prev_x = 0
+	local prev_y = 0
+	local prev_width = 0
+	local prev_height = 0
+
 	for _, widget in ipairs(self.widgets) do
 		if is_widget(widget, ImageWidget) then
 			local widget = widget --[[@as ImageWidget]]
+
+			if needs_reposition then
+				local x = (widget.width + COLUMN_SPACE) * (index % self.max_cols) + CANVAS_PADDING
+				local y = (widget.height + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) *
+						math.floor(index / self.max_cols) + CANVAS_PADDING
+
+				widget.x = x
+				widget.y = y
+
+				index = index + 1
+				prev_x = x
+				prev_y = y
+				prev_width = widget.width
+				prev_height = widget.height
+			end
+
 			local part_id = table.contains(self.hovered_widgets, widget) and "sunken_focused" or "sunken_normal"
 			ctx:drawThemeRect(part_id, widget.x, widget.y, widget.image.width + SUNKEN_PADDING,
 				widget.image.height + SUNKEN_PADDING)
 			ctx:drawImage(widget.image, widget.x + SUNKEN_PADDING / 2, widget.y + SUNKEN_PADDING / 2)
 		elseif is_widget(widget, TextWidget) then
 			local widget = widget --[[@as TextWidget]]
+
+			if needs_reposition then
+				widget.x = prev_x + (prev_width - ctx:measureText(widget.text).width) / 2
+				widget.y = prev_y + prev_height + TEXT_PADDING_TOP
+				widget.hovered_x = prev_x
+			end
+
 			ctx.color = widget.color
 			ctx:fillText(widget.text, widget.x, widget.y)
 			if table.contains(self.hovered_widgets, widget) then
@@ -233,12 +265,6 @@ function Editor:create_widgets(ctx)
 	for index, state in ipairs(self.dmi.states) do
 		if index > max_index then break end
 
-		index = index - 1
-
-		local x = (widget_width + COLUMN_SPACE) * (index % self.max_cols) + CANVAS_PADDING
-		local y = (widget_height + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) * math.floor(index / self.max_cols) +
-				CANVAS_PADDING
-
 		local background_color = app.theme.color.face
 
 		local image = Image(width, height)
@@ -252,17 +278,14 @@ function Editor:create_widgets(ctx)
 			end
 		end
 
-		local widget = ImageWidget(image, x, y, widget_width, widget_height, on_click)
+		local widget = ImageWidget(image, widget_width, widget_height, on_click)
 
 		table.insert(self.widgets, widget)
 
 		local text = fit_text(ctx, state.name, widget_width - SUNKEN_PADDING / 2)
 		local size = ctx:measureText(text)
-		local hovered_x = x
-		local x = x + (widget_width - size.width) / 2
-		local y = y + widget_height + TEXT_PADDING_TOP
 
-		local widget = TextWidget(text, app.theme.color.text, x, y, width, size.height, state.name, hovered_x, widget_width)
+		local widget = TextWidget(text, app.theme.color.text, width, size.height, state.name, widget_width)
 
 		table.insert(self.widgets, widget)
 	end
@@ -332,7 +355,7 @@ function Editor:on_mouse_up(ev)
 	if ev.button == MouseButton.LEFT or ev.button == MouseButton.RIGHT then
 		for _, widget in ipairs(self.widgets) do
 			local bounds = Rectangle(widget.x, widget.y, widget.width, widget.height)
-			if bounds:contains(Point(ev.x, ev.y)) then
+			if bounds:contains(Point(ev.x, ev.y)) and widget.on_click then
 				widget:on_click(ev)
 			end
 		end

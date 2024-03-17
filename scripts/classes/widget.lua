@@ -19,17 +19,13 @@ ImageWidget = {}
 ImageWidget.__index = ImageWidget
 
 --- @param image Image
---- @param x integer
---- @param y integer
 --- @param width integer
 --- @param height integer
 --- @param on_click? fun(self: Widget, ev: MouseEvent)
-function ImageWidget.__call(self, image, x, y, width, height, on_click)
+function ImageWidget.__call(self, image, width, height, on_click)
 	local self = setmetatable({}, getmetatable(self)) --[[@as ImageWidget]]
 
 	self.image = image
-	self.x = x
-	self.y = y
 	self.width = width
 	self.height = height
 	self.on_click = on_click
@@ -50,24 +46,18 @@ TextWidget.__index = TextWidget
 
 --- @param text string
 --- @param color Color
---- @param x integer
---- @param y integer
 --- @param width integer
 --- @param height integer
 --- @param hovered_text string
---- @param hovered_x integer
 --- @param hovered_width integer
-function TextWidget.__call(self, text, color, x, y, width, height, hovered_text, hovered_x, hovered_width)
+function TextWidget.__call(self, text, color, width, height, hovered_text, hovered_width)
 	local self = setmetatable({}, getmetatable(self)) --[[@as TextWidget]]
 
 	self.text = text
 	self.color = color
-	self.x = x
-	self.y = y
 	self.width = width
 	self.height = height
 	self.hovered_text = hovered_text
-	self.hovered_x = hovered_x
 	self.hovered_width = hovered_width
 
 	return self
