@@ -8,9 +8,14 @@
 --- @field max_rows integer The maximum amount of rows to show in the editor.
 --- @field max_cols integer The maximum amount of columns to show in the editor.
 --- @field mouse Mouse The mouse object.
+--- @field open_sprites Editor.Sprite[] The sprites that are currently open in the Aseprite editor.
+--- @field before_command number The listener for the beforecommand event.
+--- @field recreate_widgets boolean Whether the widgets should be recreated.
 --- @field dialog Dialog The dialog object.
 Editor = {}
 Editor.__index = Editor
+
+--- @alias Editor.Sprite { state: State, sprite: Sprite }
 
 --- The space between the edge of the editor and the canvas.
 local CANVAS_PADDING = 1
@@ -84,6 +89,9 @@ function Editor.__call(self, filename)
 	self.max_rows = 0
 	self.max_cols = 0
 	self.mouse = Mouse()
+	self.open_sprites = {}
+	self.before_command = app.events:on("beforecommand", function(ev) self:on_before_command(ev --[[@as BeforeEvent]]) end)
+	self.recreate_widgets = true
 	self.dialog = self:create_dialog()
 
 	return self
@@ -121,6 +129,7 @@ end
 function Editor:create_dialog()
 	local dialog = Dialog {
 		title = "Editor",
+		onclose = function() self:on_close() end,
 	}
 
 	dialog:canvas {
@@ -165,10 +174,14 @@ function Editor:on_paint(ctx)
 		self.max_rows = max_rows
 		self.max_cols = max_cols
 		needs_reposition = true
+		if #self.dmi.states > max_rows * max_cols then
+			self.recreate_widgets = true
+		end
 	end
 
-	if #self.widgets == 0 then
+	if self.recreate_widgets then
 		self:create_widgets(ctx)
+		needs_reposition = true
 	end
 
 	local hovered_texts = {} --[[@type TextWidget[] ]]
@@ -289,6 +302,8 @@ function Editor:create_widgets(ctx)
 
 		table.insert(self.widgets, widget)
 	end
+
+	self.recreate_widgets = false
 end
 
 --- Handles the mouse down event in the editor and triggers a repaint.
@@ -368,6 +383,13 @@ function Editor:on_mouse_up(ev)
 	end
 end
 
+--- Handles the close event in the editor.
+function Editor:on_close()
+	for _, sprite in ipairs(self.open_sprites) do
+		sprite.sprite:close()
+	end
+end
+
 local DIRECTION_NAMES = { "South", "North", "East", "West", "Southeast", "Southwest", "Northeast", "Northwest" }
 
 --- Loads the palette of the sprite while filtering out the transparent color. If the palette is empty, the default palette is loaded.
@@ -401,10 +423,49 @@ local load_palette = function(sprite)
 	app.command.LoadPalette { ui = false, preset = "default" }
 end
 
+--- Switches the tab to the sprite containing the state.
+--- @param sprite Sprite The sprite to be opened.
+local switch_tab = function(sprite)
+	for _ = 0, #app.sprites + 1, 1 do
+		if app.sprite ~= sprite then
+			app.command.GotoNextTab()
+		else
+			break
+		end
+	end
+end
+
+--- Checks if a state is open in the Aseprite editor.
+--- @param state State The state to check.
+--- @return Sprite? sprite The sprite containing the state, or nil if the state is not open.
+function Editor:is_state_open(state)
+	self:cleanup_sprites()
+	for _, sprite in ipairs(self.open_sprites) do
+		if sprite.state == state then
+			return sprite.sprite
+		end
+	end
+end
+
+--- Saves the sprite to a file and removes the temporary file.
+--- @param sprite Sprite The sprite to save.
+local fake_save = function(sprite)
+	local filename = sprite.filename
+	sprite:saveAs(app.fs.joinPath(PLUGIN_PATH, filename .. ".ase"))
+	libdmi.remove_file(sprite.filename)
+	sprite.filename = filename
+end
+
 --- Opens a state in the Aseprite editor by creating a new sprite and populating it with frames and layers based on the provided state.
 --- @param state State The state to open.
 function Editor:open_state(state)
-	local sprite = Sprite(self.dmi.width, self.dmi.height, ColorMode.RGB)
+	local sprite = self:is_state_open(state)
+	if sprite then
+		switch_tab(sprite)
+		return
+	end
+
+	local sprite = Sprite(self.dmi.width, self.dmi.height)
 	sprite.filename = state.name
 
 	app.transaction("Load State", function()
@@ -448,6 +509,144 @@ function Editor:open_state(state)
 		load_palette(sprite)
 		app.command.FitScreen()
 	end)
+
+	fake_save(sprite)
+
+	self:cleanup_sprites()
+	table.insert(self.open_sprites, { state = state, sprite = sprite })
+end
+
+--- Checks if a sprite is open in the Aseprite editor.
+--- @param sprite Sprite The sprite to check.
+--- @return boolean boolean Returns true if the sprite is open, false otherwise.
+local is_sprite_open = function(sprite)
+	for _, open in ipairs(app.sprites) do
+		if open == sprite then
+			return true
+		end
+	end
+	return false
+end
+
+--- Removes the open sprites that are no longer open in the Aseprite editor.
+function Editor:cleanup_sprites()
+	for i, sprite in ipairs(self.open_sprites) do
+		if not is_sprite_open(sprite.sprite) then
+			table.remove(self.open_sprites, i)
+		end
+	end
+end
+
+--- Checks if a sprite is bound to this editor.
+--- @param sprite Sprite The sprite to check.
+--- @return Editor.Sprite? open_sprite The open sprite, or nil if the sprite is not open.
+function Editor:is_our_sprite(sprite)
+	for _, open_sprite in ipairs(self.open_sprites) do
+		if open_sprite.sprite == sprite then
+			return open_sprite
+		end
+	end
+end
+
+--- Handles the before command event in the editor.
+--- @param ev BeforeEvent The event object.
+function Editor:on_before_command(ev)
+	if ev.name == "SaveFile" then
+		local sprite = self:is_our_sprite(app.sprite)
+		if sprite then
+			self:save_sprite(sprite)
+			ev.stopPropagation()
+		end
+	end
+end
+
+--- Returns the correct verb for the amount.
+--- @param count integer The amount to check.
+--- @return string verb The correct verb for the amount.
+local is_are = function(count)
+	return count == 1 and "is" or "are"
+end
+
+--- Saves the sprite to the state.
+--- @param sprite Editor.Sprite The sprite to save.
+--- @return boolean Returns true if the sprite was saved, false otherwise.
+function Editor:save_sprite(sprite)
+	local matches = {} --[[ @type table<string, boolean> ]]
+	local duplicates = {} --[[ @type string[] ]]
+
+	for _, layer in ipairs(sprite.sprite.layers) do
+		local dir = table.index_of(DIRECTION_NAMES, layer.name)
+		if dir ~= 0 and dir <= sprite.state.dirs then
+			if matches[layer.name] then
+				table.insert(duplicates, layer.name)
+			else
+				matches[layer.name] = true
+			end
+		end
+	end
+
+	if table.length(matches) ~= sprite.state.dirs then
+		local missing = {} --[[ @type string[] ]]
+		for i = 1, sprite.state.dirs, 1 do
+			local name = DIRECTION_NAMES[i]
+			if not matches[name] then
+				table.insert(missing, name)
+			end
+		end
+		app.alert {
+			title = "Warning",
+			text = {
+				"There must be at least " .. sprite.state.dirs .. " layers matching direction names",
+				table.concat_and(missing) .. " " .. is_are(#missing) .. " missing",
+			}
+		}
+		return false
+	end
+
+	if #duplicates > 0 then
+		app.alert {
+			title = "Warning",
+			text = {
+				"There must be only one layer for each direction",
+				table.concat_and(duplicates) .. " " .. is_are(#duplicates) .. " duplicated",
+			}
+		}
+		return false
+	end
+
+	local delays = {} --[[ @type integer[] ]]
+
+	for index, frame in ipairs(sprite.sprite.frames) do
+		if #sprite.sprite.frames > 1 then
+			table.insert(delays, frame.duration * 10)
+		end
+		for _, layer in ipairs(sprite.sprite.layers) do
+			local dir = table.index_of(DIRECTION_NAMES, layer.name)
+			if dir ~= 0 and dir <= sprite.state.dirs then
+				local cel = layer:cel(frame.frameNumber)
+				local image = Image(self.dmi.width, self.dmi.height)
+
+				if cel and cel.image then
+					image:drawImage(cel.image, cel.position)
+				end
+
+				local index = (index - 1) * sprite.state.dirs + dir - 1
+
+				local bytes = image.bytes
+				sprite.state:set_frame(index, self.dmi.width, self.dmi.height, string.byte(bytes, 1, #bytes))
+			end
+		end
+	end
+
+	sprite.state.delays = delays
+	sprite.state.frame_count = #sprite.sprite.frames
+
+	fake_save(sprite.sprite)
+
+	self.recreate_widgets = true
+	self.dialog:repaint()
+
+	return true
 end
 
 Editor = setmetatable({}, Editor)

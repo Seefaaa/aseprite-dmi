@@ -39,6 +39,15 @@ impl Dmi {
         reader.set_format(image::ImageFormat::Png);
 
         let mut image = reader.decode().map_err(ExternalError::Image)?;
+
+        for pixel in image.as_mut_rgba8().ok_or(Error::NotRgba8)?.pixels_mut() {
+            if pixel[3] == 0 {
+                pixel[0] = 0;
+                pixel[1] = 0;
+                pixel[2] = 0;
+            }
+        }
+
         let grid_width = image.width() / dmi.width;
 
         let mut index = 0;
@@ -197,4 +206,6 @@ pub enum Error {
     FindDir,
     #[error("Directory does not exist")]
     DirDoesNotExist,
+    #[error("The image is not in RGBA8 format")]
+    NotRgba8,
 }

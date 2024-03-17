@@ -1,5 +1,7 @@
 --- @diagnostic disable: lowercase-global
 
+PLUGIN_PATH = nil --[[@type string]]
+
 local after_listener --[[@type number]]
 
 dofile("string.lua")
@@ -19,12 +21,14 @@ function init(plugin)
 		return
 	end
 
+	PLUGIN_PATH = plugin.path
+
 	after_listener = app.events:on("aftercommand", function(ev)
 		if ev.name == "OpenFile" then
 			local filename = app.sprite.filename
 			if app.sprite and string.ends_with(filename, ".dmi") then
 				app.command.CloseFile { ui = false }
-				loadlib(plugin.path)
+				loadlib()
 				local editor = Editor(filename)
 			end
 		end
@@ -49,8 +53,7 @@ function exit(plugin)
 end
 
 --- Loads the DMI library.
---- @param path string Path where the extension is installed.
-function loadlib(path)
+function loadlib()
 	if libdmi then return end
 
 	local win = app.fs.pathSeparator ~= "/"
@@ -58,10 +61,10 @@ function loadlib(path)
 	local dmi_lib = win and "dmi" or "libdmi"
 
 	if win then
-		package.loadlib(app.fs.joinPath(path, lua_lib --[[@as string]]), "")
+		package.loadlib(app.fs.joinPath(PLUGIN_PATH, lua_lib --[[@as string]]), "")
 	else
 		package.cpath = package.cpath .. ";?.dylib"
 	end
 
-	package.loadlib(app.fs.joinPath(path, dmi_lib), "luaopen_dmi_module")()
+	package.loadlib(app.fs.joinPath(PLUGIN_PATH, dmi_lib), "luaopen_dmi_module")()
 end

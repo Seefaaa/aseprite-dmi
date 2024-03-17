@@ -320,7 +320,7 @@ WebSocketMessageType = {
 --- @field rgba fun(r: number, g: number, b: number, a: number): number
 
 --- @class app.events
---- @field on fun(self: app.events, name: string, callback: function): number
+--- @field on fun(self: app.events, name: string, callback: fun(ev: Event|BeforeEvent)): number
 --- @field off fun(self: app.events, id: number)
 
 --- @class app.theme
@@ -437,7 +437,7 @@ WebSocketMessageType = {
 --- @field crop function
 --- @field saveAs fun(self: Sprite, filename: string)
 --- @field saveCopyAs function
---- @field close function
+--- @field close fun() Closes the sprite. This doesn't ask the user to save changes.
 --- @field loadPalette function
 --- @field setPalette fun(self: Sprite, palette: Palette)
 --- @field assignColorSpace function
@@ -658,7 +658,7 @@ WebSocketMessageType = {
 --- @field layer Layer
 --- @field frame Frame
 --- @field frameNumber number
---- @field image Image
+--- @field image? Image
 --- @field bounds Rectangle
 --- @field position Point
 --- @field opacity number
@@ -785,6 +785,12 @@ WebSocketMessageType = {
 --- @field shiftKey boolean
 --- @field spaceKey boolean
 
+--- @class Event
+--- @field name string The name of the event.
+
+--- @class BeforeEvent: Event
+--- @field stopPropagation fun() Cancels the event.
+
 --- @alias PixelColor number
 
 --- @class MouseButton
@@ -838,7 +844,8 @@ WebSocketMessageType = {
 ---| 'FRAGMENT'
 
 --- @class libdmi: table
---- @field open fun(filename: string): Dmi?
+--- @field open fun(filename: string): Dmi? Opens a DMI file and returns a Dmi object.
+--- @field remove_file fun(filename: string): boolean Returns true if the file was removed successfully.
 
 --- @class Dmi: userdata
 --- @field name string The name of the DMI file.
@@ -853,3 +860,4 @@ WebSocketMessageType = {
 --- @field delays number[] The delays between frames in the state.
 --- @field preview fun(self: State, r: integer, g: integer, b: integer): string Returns a preview of the state in Aseprite's image bytes format.
 --- @field frame fun(self: State, index: integer): string Returns the frame at the given index in Aseprite's image bytes format.
+--- @field set_frame fun(self: State, index: integer, width: integer, height: integer, image: integer) Sets the frame at the given index to the given image in `string.byte` used Aseprite's image bytes format.
