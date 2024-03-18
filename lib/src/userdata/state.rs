@@ -4,6 +4,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::error::ExternalError;
 
+use super::DmiError;
+
 #[derive(Debug)]
 pub struct State {
     pub name: String,
@@ -124,5 +126,5 @@ fn bytes_to_image(
     width: u32,
     height: u32,
 ) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, ExternalError> {
-    ImageBuffer::from_vec(width, height, bytes).ok_or(ExternalError::SizeMismatch)
+    ImageBuffer::from_vec(width, height, bytes).ok_or(ExternalError::Dmi(DmiError::BufSizeMismatch))
 }

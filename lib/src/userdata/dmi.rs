@@ -82,7 +82,7 @@ impl Dmi {
                         dmi.height,
                     );
                     if image.width() != dmi.width || image.height() != dmi.height {
-                        return Err(Error::SizeMismatch)?;
+                        return Err(Error::ImageSizeMismatch)?;
                     }
                     state.frames.push(image);
                     index += 1;
@@ -297,12 +297,14 @@ pub enum Error {
     OutOfOrder,
     #[error("Unknown metadata key")]
     UnknownKey,
-    #[error("Failed to find available directory")]
-    SizeMismatch,
+    #[error("The size of the states does not match the size of the DMI")]
+    ImageSizeMismatch,
     #[error("Failed to find available directory")]
     FindDir,
     #[error("Directory does not exist")]
     DirDoesNotExist,
     #[error("The image is not in RGBA8 format")]
     NotRgba8,
+    #[error("The size of the buffer does not match the size of the image")]
+    BufSizeMismatch,
 }

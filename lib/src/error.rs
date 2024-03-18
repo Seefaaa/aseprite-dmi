@@ -14,8 +14,6 @@ pub enum ExternalError {
     ParseInt(#[from] std::num::ParseIntError),
     PngDecoding(#[from] png::DecodingError),
     PngEncoding(#[from] png::EncodingError),
-    #[error("The size of the buffer does not match the size of the image")]
-    SizeMismatch,
 }
 
 impl From<ExternalError> for mlua::Error {
