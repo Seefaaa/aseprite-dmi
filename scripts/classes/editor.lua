@@ -105,7 +105,7 @@ function Editor:default_size()
 	local max_height = app.window.height * 0.8
 
 	if self.dmi.width < max_width then
-		local width = WIDTH(self.dmi.width, 4)
+		local width = WIDTH(self.dmi.width, 5)
 		if width < max_width then
 			self.width = width > DEFAULT_WIDTH and width or DEFAULT_WIDTH
 		else
@@ -117,7 +117,7 @@ function Editor:default_size()
 	end
 
 	if self.dmi.height < max_height then
-		local height = HEIGHT(self.dmi.height, 5)
+		local height = HEIGHT(self.dmi.height, 4)
 		self.height = height < max_height and (height > DEFAULT_HEIGHT and height or DEFAULT_HEIGHT) or max_height
 	else
 		self.height = max_height
