@@ -852,6 +852,7 @@ WebSocketMessageType = {
 --- @field width number The width of the DMI file.
 --- @field height number The height of the DMI file.
 --- @field states State[] The states of the DMI file.
+--- @field save fun(self: Dmi, filename: string) Saves the DMI file to the given filename.
 
 --- @class State: userdata
 --- @field name string The name of the state.

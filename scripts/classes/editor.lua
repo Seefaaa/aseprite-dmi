@@ -146,7 +146,7 @@ function Editor:create_dialog()
 
 	dialog:button {
 		text = "Save",
-		onclick = function() end,
+		onclick = function() self:save() end,
 	}
 
 	dialog:show { wait = false }
@@ -690,6 +690,66 @@ function Editor:save_sprite(sprite)
 	self.dialog:repaint()
 
 	return true
+end
+
+--- @param filename? string
+--- @param bounds? Rectangle
+function Editor:save(filename, bounds)
+	local context = nil --[[@type GraphicsContext]]
+
+	local dialog = Dialog {
+		title = "Save File",
+	}
+
+	dialog:file {
+		id = "filename",
+		filename = filename or self.filename,
+		filetypes = { "dmi" },
+		save = true,
+		onchange = function()
+			local filename = dialog.data.filename
+			local bounds = dialog.bounds
+			local width = context:measureText(filename).width + 20
+
+			dialog:close()
+
+			bounds.x = bounds.x + math.floor((bounds.width - width) / 2)
+			bounds.width = width
+
+			self:save(filename, bounds)
+		end,
+	}
+
+	dialog:label {
+		focus = true,
+		text = dialog.data.filename,
+	}
+
+	dialog:canvas {
+		height = 1,
+		onpaint = function(ev)
+			context = ev.context
+		end,
+	}
+
+	dialog:button {
+		focus = true,
+		text = "&Save",
+		onclick = function()
+			dialog:close()
+			self.filename = dialog.data.filename
+			self.dmi:save(self.filename)
+		end,
+	}
+
+	dialog:button {
+		text = "&Cancel",
+		onclick = function()
+			dialog:close()
+		end,
+	}
+
+	dialog:show { bounds = bounds }
 end
 
 Editor = setmetatable({}, Editor)

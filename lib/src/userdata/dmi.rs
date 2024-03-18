@@ -1,9 +1,11 @@
 use image::io::Reader as ImageReader;
-use mlua::{Lua, Result, UserData, UserDataFields};
-use png::Decoder;
+use image::{imageops, ImageBuffer};
+use mlua::{Lua, Result, UserData, UserDataFields, UserDataMethods};
+use png::{BitDepth, ColorType, Compression, Decoder, Encoder};
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::fs::File;
+use std::fs::{create_dir_all, File};
+use std::io::BufWriter;
 use std::path::Path;
 use std::rc::Rc;
 use thiserror::Error;
@@ -172,6 +174,86 @@ impl Dmi {
 
         Ok(dmi)
     }
+    fn save(&self, filename: String) -> Result<()> {
+        let total_frames: usize = self.states.iter().map(|s| s.borrow().frames.len()).sum();
+        let (sqrt, width, height) = size(total_frames, self.width, self.height);
+
+        let mut image_buffer = ImageBuffer::new(width, height);
+
+        let mut index = 0;
+        for state in self.states.iter() {
+            let state = state.borrow();
+            for frame in state.frames.iter() {
+                let x = (index as f32 % sqrt) as u32 * self.width;
+                let y = (index as f32 / sqrt) as u32 * self.height;
+                imageops::replace(&mut image_buffer, frame, x as i64, y as i64);
+                index += 1;
+            }
+        }
+
+        if let Some(path) = Path::new(&filename).parent() {
+            if !path.exists() {
+                create_dir_all(path).map_err(ExternalError::Io)?;
+            }
+        }
+
+        let file = File::create(&filename).map_err(ExternalError::Io)?;
+        let mut writer = BufWriter::new(file);
+        let mut encoder = Encoder::new(&mut writer, width, height);
+
+        encoder.set_color(ColorType::Rgba);
+        encoder.set_depth(BitDepth::Eight);
+        encoder.set_compression(Compression::Best);
+
+        encoder
+            .add_ztxt_chunk("Description".to_string(), self.metadata())
+            .map_err(ExternalError::PngEncoding)?;
+
+        let mut writer = encoder.write_header().map_err(ExternalError::PngEncoding)?;
+
+        writer
+            .write_image_data(&image_buffer)
+            .map_err(ExternalError::PngEncoding)?;
+
+        Ok(())
+    }
+    fn metadata(&self) -> String {
+        let mut metadata = String::new();
+
+        metadata.push_str("# BEGIN DMI\n");
+        metadata.push_str(&format!("version = {DMI_VERSION}\n"));
+        metadata.push_str(&format!("width = {}\n", self.width));
+        metadata.push_str(&format!("height = {}\n", self.height));
+
+        for state in self.states.iter() {
+            let state = state.borrow();
+
+            metadata.push_str(&format!("state = \"{}\"\n", state.name));
+            metadata.push_str(&format!("\tdirs = {}\n", state.dirs));
+            metadata.push_str(&format!("\tframes = {}\n", state.frame_count));
+
+            if !state.delays.is_empty() {
+                metadata.push_str("\tdelay = ");
+                for delay in state.delays.iter() {
+                    metadata.push_str(&format!("{delay},"));
+                }
+                metadata.pop();
+                metadata.push('\n');
+            }
+
+            metadata.push_str(&format!("\tloop = {}\n", state.r#loop));
+            metadata.push_str(&format!("\trewind = {}\n", state.rewind as u8));
+            metadata.push_str(&format!("\tmovement = {}\n", state.movement as u8));
+
+            for hotspot in state.hotspots.iter() {
+                metadata.push_str(&format!("\thotspot = {hotspot}\n"));
+            }
+        }
+
+        metadata.push_str("# END DMI\n");
+
+        metadata
+    }
 }
 
 impl UserData for Dmi {
@@ -181,6 +263,21 @@ impl UserData for Dmi {
         fields.add_field_method_get("height", |_, this| Ok(this.height));
         fields.add_field_method_get("states", |_, this| Ok(this.states.clone()));
     }
+    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+        methods.add_method("save", |_, this, filename: String| this.save(filename));
+    }
+}
+
+fn size(frames: usize, width: u32, height: u32) -> (f32, u32, u32) {
+    if frames == 0 {
+        return (1., width, height);
+    }
+
+    let sqrt = (frames as f32).sqrt().ceil();
+    let width = width * sqrt as u32;
+    let height = height * (frames as f32 / sqrt).ceil() as u32;
+
+    (sqrt, width, height)
 }
 
 #[derive(Error, Debug)]
