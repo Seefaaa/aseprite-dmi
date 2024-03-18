@@ -7,6 +7,7 @@
 --- @field hovered_widgets Widget[] The widgets that are currently hovered by the mouse.
 --- @field max_rows integer The maximum amount of rows to show in the editor.
 --- @field max_cols integer The maximum amount of columns to show in the editor.
+--- @field scroll integer The amount of rows to scroll through the states.
 --- @field mouse Mouse The mouse object.
 --- @field open_sprites Editor.Sprite[] The sprites that are currently open in the Aseprite editor.
 --- @field before_command number The listener for the beforecommand event.
@@ -88,6 +89,7 @@ function Editor.__call(self, filename)
 	self.hovered_widgets = {}
 	self.max_rows = 0
 	self.max_cols = 0
+	self.scroll = 0
 	self.mouse = Mouse()
 	self.open_sprites = {}
 	self.before_command = app.events:on("beforecommand", function(ev) self:on_before_command(ev --[[@as BeforeEvent]]) end)
@@ -139,6 +141,7 @@ function Editor:create_dialog()
 		onmousemove = function(ev) self:on_mouse_move(ev) end,
 		onmousedown = function(ev) self:on_mouse_down(ev) end,
 		onmouseup = function(ev) self:on_mouse_up(ev) end,
+		onwheel = function(ev) self:on_wheel(ev) end,
 	}
 
 	dialog:button {
@@ -175,6 +178,10 @@ function Editor:on_paint(ctx)
 		self.max_cols = max_cols
 		needs_reposition = true
 		if #self.dmi.states > max_rows * max_cols then
+			self.recreate_widgets = true
+		end
+		if self.scroll > self:max_scroll() then
+			self.scroll = self:max_scroll()
 			self.recreate_widgets = true
 		end
 	end
@@ -273,37 +280,40 @@ function Editor:create_widgets(ctx)
 	local widget_width = width + SUNKEN_PADDING
 	local widget_height = height + SUNKEN_PADDING
 
-	local max_index = self.max_rows * self.max_cols;
+	local min_index = self.scroll * self.max_cols
+	local max_index = min_index + self.max_rows * self.max_cols
 
 	for index, state in ipairs(self.dmi.states) do
-		if index > max_index then break end
+		if index > min_index then
+			if index > max_index then break end
 
-		local background_color = app.theme.color.face
+			local background_color = app.theme.color.face
 
-		local image = Image(width, height)
-		image.bytes = state:preview(background_color.red, background_color.green, background_color.blue)
+			local image = Image(width, height)
+			image.bytes = state:preview(background_color.red, background_color.green, background_color.blue)
 
-		--- @param widget ImageWidget
-		--- @param ev MouseEvent
-		local on_click = function(widget, ev)
-			if ev.button == MouseButton.LEFT then
-				self:open_state(state)
+			--- @param widget ImageWidget
+			--- @param ev MouseEvent
+			local on_click = function(widget, ev)
+				if ev.button == MouseButton.LEFT then
+					self:open_state(state)
+				end
 			end
+
+			local widget = ImageWidget(image, widget_width, widget_height, on_click)
+
+			table.insert(self.widgets, widget)
+
+			local text = fit_text(ctx, state.name, widget_width - SUNKEN_PADDING / 2)
+			local size = ctx:measureText(text)
+
+			local widget = TextWidget(text, app.theme.color.text, width, size.height, state.name, widget_width)
+
+			table.insert(self.widgets, widget)
 		end
 
-		local widget = ImageWidget(image, widget_width, widget_height, on_click)
-
-		table.insert(self.widgets, widget)
-
-		local text = fit_text(ctx, state.name, widget_width - SUNKEN_PADDING / 2)
-		local size = ctx:measureText(text)
-
-		local widget = TextWidget(text, app.theme.color.text, width, size.height, state.name, widget_width)
-
-		table.insert(self.widgets, widget)
+		self.recreate_widgets = false
 	end
-
-	self.recreate_widgets = false
 end
 
 --- Handles the mouse down event in the editor and triggers a repaint.
@@ -381,6 +391,39 @@ function Editor:on_mouse_up(ev)
 	elseif ev.button == MouseButton.Right then
 		self.mouse.right = false
 	end
+end
+
+--- Handles the mouse wheel event for scrolling through states.
+--- @param ev table The mouse wheel event object.
+function Editor:on_wheel(ev)
+	local max_scroll = self:max_scroll()
+
+	if max_scroll == 0 then return end
+
+	local scroll = math.min(math.max(self.scroll + (ev.deltaY > 0 and 1 or -1), 0), max_scroll)
+
+	if scroll ~= self.scroll then
+		self.scroll = scroll
+		self.recreate_widgets = true
+		self.dialog:repaint()
+	end
+end
+
+--- Returns the maximum amount of rows to scroll through the states.
+--- @return integer overflow The maximum amount of rows to scroll through the states.
+function Editor:max_scroll()
+	local overflow = #self.dmi.states - self.max_rows * self.max_cols
+
+	if overflow <= 0 then return 0 end
+
+	local remainder = overflow % self.max_cols
+	local rounded = overflow - remainder
+
+	if remainder > 0 then
+		rounded = rounded + self.max_cols
+	end
+
+	return math.floor(rounded / self.max_cols)
 end
 
 --- Handles the close event in the editor.
