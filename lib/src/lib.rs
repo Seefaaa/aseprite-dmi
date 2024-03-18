@@ -1,4 +1,4 @@
-mod errors;
+mod error;
 mod lua;
 mod macros;
 mod userdata;

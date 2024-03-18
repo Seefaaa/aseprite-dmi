@@ -10,7 +10,7 @@ use std::path::Path;
 use std::rc::Rc;
 use thiserror::Error;
 
-use crate::errors::ExternalError;
+use crate::error::ExternalError;
 
 use super::State;
 

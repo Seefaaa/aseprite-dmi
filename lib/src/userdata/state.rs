@@ -2,7 +2,7 @@ use image::{imageops, DynamicImage, ImageBuffer, Rgba};
 use mlua::{AnyUserData, MetaMethod, MultiValue, Table, UserData, UserDataFields, UserDataMethods};
 use std::{cell::RefCell, rc::Rc};
 
-use crate::errors::ExternalError;
+use crate::error::ExternalError;
 
 #[derive(Debug)]
 pub struct State {
