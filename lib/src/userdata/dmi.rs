@@ -35,7 +35,7 @@ impl Dmi {
             .ok_or(Error::MissingZTXT)?;
         let metadata = chunk.get_text().map_err(ExternalError::PngDecoding)?;
 
-        let dmi = Self::from_metadata(filename.clone(), metadata)?;
+        let dmi = Self::from_metadata(&filename, metadata)?;
 
         let mut reader = ImageReader::open(&filename).map_err(ExternalError::Io)?;
         reader.set_format(image::ImageFormat::Png);
@@ -92,8 +92,8 @@ impl Dmi {
 
         Ok(dmi)
     }
-    fn from_metadata(filename: String, metadata: String) -> Result<Self> {
-        let filename = Path::new(&filename)
+    fn from_metadata(filename: &str, metadata: String) -> Result<Self> {
+        let filename = Path::new(filename)
             .file_stem()
             .unwrap()
             .to_string_lossy()
@@ -265,6 +265,13 @@ impl UserData for Dmi {
     }
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_method("save", |_, this, filename: String| this.save(filename));
+        methods.add_method_mut("new_state", |_, this, ()| {
+            let state = Rc::new(RefCell::new(State::blank(this.width, this.height)));
+
+            this.states.push(state.clone());
+
+            Ok(state)
+        });
     }
 }
 

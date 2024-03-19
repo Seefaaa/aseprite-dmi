@@ -33,6 +33,21 @@ impl State {
             hotspots: Vec::new(),
         }
     }
+    pub fn blank(width: u32, height: u32) -> Self {
+        let blank_frame = DynamicImage::new_rgba8(width, height);
+
+        Self {
+            name: String::new(),
+            dirs: 1,
+            frames: vec![blank_frame],
+            frame_count: 1,
+            delays: Vec::new(),
+            r#loop: 0,
+            rewind: false,
+            movement: false,
+            hotspots: Vec::new(),
+        }
+    }
 }
 
 impl UserData for State {

@@ -38,9 +38,9 @@ ImageWidget = setmetatable({}, ImageWidget)
 --- @class TextWidget: Widget
 --- @field text string The text to draw.
 --- @field color Color The color of the text.
---- @field hovered_text string The text to draw when the mouse is hovering over the widget.
---- @field hovered_x integer The x position of the hovered text.
---- @field hovered_width integer The width of the hovered text.
+--- @field hovered_text string? The text to draw when the mouse is hovering over the widget.
+--- @field hovered_x? integer The x position of the hovered text.
+--- @field hovered_width? integer The width of the hovered text.
 TextWidget = {}
 TextWidget.__index = TextWidget
 
@@ -48,8 +48,8 @@ TextWidget.__index = TextWidget
 --- @param color Color
 --- @param width integer
 --- @param height integer
---- @param hovered_text string
---- @param hovered_width integer
+--- @param hovered_text? string
+--- @param hovered_width? integer
 function TextWidget.__call(self, text, color, width, height, hovered_text, hovered_width)
 	local self = setmetatable({}, getmetatable(self)) --[[@as TextWidget]]
 
@@ -64,3 +64,28 @@ function TextWidget.__call(self, text, color, width, height, hovered_text, hover
 end
 
 TextWidget = setmetatable({}, TextWidget)
+
+--- @class ThemeWidget: Widget
+--- @field part_id? string The part id of the widget.
+--- @field width integer The width of the widget.
+--- @field height integer The height of the widget.
+--- @field on_click? fun(self: Widget, ev: MouseEvent) Function to call when the widget is clicked.
+ThemeWidget = {}
+ThemeWidget.__index = ThemeWidget
+
+--- @param part_id? string
+--- @param width integer
+--- @param height integer
+--- @param on_click? fun(self: Widget, ev: MouseEvent)
+function ThemeWidget.__call(self, part_id, width, height, on_click)
+	local self = setmetatable({}, getmetatable(self)) --[[@as ThemeWidget]]
+
+	self.part_id = part_id
+	self.width = width
+	self.height = height
+	self.on_click = on_click
+
+	return self
+end
+
+ThemeWidget = setmetatable({}, ThemeWidget)

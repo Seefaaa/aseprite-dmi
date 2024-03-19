@@ -38,10 +38,20 @@ end
 --- @param color Color The color of the text.
 --- @param width integer Width of the widget.
 --- @param height integer Height of the widget.
---- @param hovered_text string The text to draw when the mouse is hovering over the widget.
---- @param hovered_width integer The width of the hovered text.
+--- @param hovered_text? string The text to draw when the mouse is hovering over the widget.
+--- @param hovered_width? integer The width of the hovered text.
 --- @return TextWidget widget The text widget.
 function TextWidget(text, color, width, height, hovered_text, hovered_width)
+	return {}
+end
+
+--- Creates a new theme widget.
+--- @param part_id? string The part id of the widget.
+--- @param width integer Width of the widget.
+--- @param height integer Height of the widget.
+--- @param on_click? fun(self: Widget, ev: MouseEvent) Function to call when the widget is clicked.
+--- @return ThemeWidget widget The theme widget.
+function ThemeWidget(part_id, width, height, on_click)
 	return {}
 end
 
@@ -853,6 +863,7 @@ WebSocketMessageType = {
 --- @field height number The height of the DMI file.
 --- @field states State[] The states of the DMI file.
 --- @field save fun(self: Dmi, filename: string) Saves the DMI file to the given filename.
+--- @field new_state fun(self: Dmi): State Creates a new state and returns it.
 
 --- @class State: userdata
 --- @field name string The name of the state.

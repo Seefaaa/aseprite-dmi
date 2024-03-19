@@ -177,7 +177,7 @@ function Editor:on_paint(ctx)
 		self.max_rows = max_rows
 		self.max_cols = max_cols
 		needs_reposition = true
-		if #self.dmi.states > max_rows * max_cols then
+		if (#self.dmi.states + 1) > max_rows * max_cols then
 			self.recreate_widgets = true
 		end
 		if self.scroll > self:max_scroll() then
@@ -198,6 +198,7 @@ function Editor:on_paint(ctx)
 	local prev_y = 0
 	local prev_width = 0
 	local prev_height = 0
+	local new_button = false
 
 	for _, widget in ipairs(self.widgets) do
 		if is_widget(widget, ImageWidget) then
@@ -227,14 +228,45 @@ function Editor:on_paint(ctx)
 
 			if needs_reposition then
 				widget.x = prev_x + (prev_width - ctx:measureText(widget.text).width) / 2
-				widget.y = prev_y + prev_height + TEXT_PADDING_TOP
+				if new_button then
+					widget.y = prev_y + (prev_height - TEXT_HEIGHT) / 2
+					new_button = false
+				else
+					widget.y = prev_y + prev_height + TEXT_PADDING_TOP
+				end
 				widget.hovered_x = prev_x
 			end
 
 			ctx.color = widget.color
 			ctx:fillText(widget.text, widget.x, widget.y)
-			if table.contains(self.hovered_widgets, widget) then
+			if widget.hovered_text and table.contains(self.hovered_widgets, widget) then
 				table.insert(hovered_texts, widget)
+			end
+		elseif is_widget(widget, ThemeWidget) then
+			local widget = widget --[[@as ThemeWidget]]
+
+			if needs_reposition then
+				local x = (widget.width + COLUMN_SPACE) * (index % self.max_cols) + CANVAS_PADDING
+				local y = (widget.height + TEXT_PADDING_TOP + TEXT_HEIGHT + TEXT_PADDING_BOTTOM) *
+						math.floor(index / self.max_cols) + CANVAS_PADDING
+
+				widget.x = x
+				widget.y = y
+
+				index = index + 1
+				prev_x = x
+				prev_y = y
+				prev_width = widget.width
+				prev_height = widget.height
+
+				new_button = true
+			end
+
+			local part_id = table.contains(self.hovered_widgets, widget) and "sunken_focused" or "sunken_normal"
+			ctx:drawThemeRect(part_id, widget.x, widget.y, widget.width, widget.height)
+
+			if widget.part_id then
+				ctx:drawThemeImage(widget.part_id, widget.x, widget.y)
 			end
 		end
 	end
@@ -311,9 +343,27 @@ function Editor:create_widgets(ctx)
 
 			table.insert(self.widgets, widget)
 		end
-
-		self.recreate_widgets = false
 	end
+
+	if #self.dmi.states < max_index then
+		--- @param widget ThemeWidget
+		--- @param ev MouseEvent
+		local on_click = function(widget, ev)
+			self.dmi:new_state()
+			self.recreate_widgets = true
+			self.dialog:repaint()
+		end
+
+		local widget = ThemeWidget(nil, widget_width, widget_height, on_click)
+
+		table.insert(self.widgets, widget)
+
+		local widget = TextWidget("+", app.theme.color.text, widget_width, TEXT_HEIGHT)
+
+		table.insert(self.widgets, widget)
+	end
+
+	self.recreate_widgets = false
 end
 
 --- Handles the mouse down event in the editor and triggers a repaint.
@@ -412,7 +462,7 @@ end
 --- Returns the maximum amount of rows to scroll through the states.
 --- @return integer overflow The maximum amount of rows to scroll through the states.
 function Editor:max_scroll()
-	local overflow = #self.dmi.states - self.max_rows * self.max_cols
+	local overflow = (#self.dmi.states + 1) - self.max_rows * self.max_cols
 
 	if overflow <= 0 then return 0 end
 
