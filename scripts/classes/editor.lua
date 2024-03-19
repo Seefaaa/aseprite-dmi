@@ -11,6 +11,7 @@
 --- @field mouse Mouse The mouse object.
 --- @field open_sprites Editor.Sprite[] The sprites that are currently open in the Aseprite editor.
 --- @field before_command number The listener for the beforecommand event.
+--- @field after_command number The listener for the aftercommand event.
 --- @field recreate_widgets boolean Whether the widgets should be recreated.
 --- @field dialog Dialog The dialog object.
 Editor = {}
@@ -93,6 +94,7 @@ function Editor.__call(self, filename)
 	self.mouse = Mouse()
 	self.open_sprites = {}
 	self.before_command = app.events:on("beforecommand", function(ev) self:on_before_command(ev --[[@as BeforeEvent]]) end)
+	self.after_command = app.events:on("aftercommand", function(ev) self:on_after_command(ev --[[@as Event]]) end)
 	self.recreate_widgets = true
 	self.dialog = self:create_dialog()
 
@@ -312,6 +314,8 @@ function Editor:create_widgets(ctx)
 	local widget_width = width + SUNKEN_PADDING
 	local widget_height = height + SUNKEN_PADDING
 
+	local names = {} --[[@type table<string, boolean>]]
+
 	local min_index = self.scroll * self.max_cols
 	local max_index = min_index + self.max_rows * self.max_cols
 
@@ -336,10 +340,24 @@ function Editor:create_widgets(ctx)
 
 			table.insert(self.widgets, widget)
 
-			local text = fit_text(ctx, state.name, widget_width - SUNKEN_PADDING / 2)
+			local no_name = #state.name == 0
+			local name = not no_name and state.name or "no name"
+
+			local text = fit_text(ctx, name, widget_width - SUNKEN_PADDING / 2)
 			local size = ctx:measureText(text)
 
-			local widget = TextWidget(text, app.theme.color.text, width, size.height, state.name, widget_width)
+			local color = app.theme.color.text
+
+			if no_name and not names[name] then
+				color = Color { red = 230, green = 223, blue = 69, alpha = 255 }
+				names[name] = true
+			elseif names[name] then
+				color = Color { red = 230, green = 69, blue = 69, alpha = 255 }
+			else
+				names[name] = true
+			end
+
+			local widget = TextWidget(text, color, width, size.height, name, widget_width)
 
 			table.insert(self.widgets, widget)
 		end
@@ -481,6 +499,14 @@ function Editor:on_close()
 	for _, sprite in ipairs(self.open_sprites) do
 		sprite.sprite:close()
 	end
+
+	self.open_sprites = nil
+
+	app.events:off(self.before_command)
+	app.events:off(self.after_command)
+
+	self.dmi = nil
+	self.dialog = nil
 end
 
 local DIRECTION_NAMES = { "South", "North", "East", "West", "Southeast", "Southwest", "Northeast", "Northwest" }
@@ -559,7 +585,7 @@ function Editor:open_state(state)
 	end
 
 	local sprite = Sprite(self.dmi.width, self.dmi.height)
-	sprite.filename = state.name
+	sprite.filename = #state.name ~= 0 and state.name or "no name"
 
 	app.transaction("Load State", function()
 		while #sprite.layers < state.dirs do
@@ -650,6 +676,15 @@ function Editor:on_before_command(ev)
 			self:save_sprite(sprite)
 			ev.stopPropagation()
 		end
+	end
+end
+
+--- Handles the after command event in the editor.
+--- @param ev Event The event object.
+function Editor:on_after_command(ev)
+	if ev.name == "Options" then
+		self.recreate_widgets = true
+		self.dialog:repaint()
 	end
 end
 
