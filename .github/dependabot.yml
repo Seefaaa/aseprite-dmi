@@ -4,7 +4,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
-  - package-ecosystem: cargo
-    directory: ./lib
-    schedule:
-      interval: monthly
+  # - package-ecosystem: cargo
+    # directory: ./lib
+    # schedule:
+      # interval: monthly
