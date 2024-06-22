@@ -1,3 +1,5 @@
+⚠ I'm ~working~ on [scratch](https://github.com/Seefaaa/aseprite-dmi/tree/scratch) branch not main branch ⚠
+
 # DMI Editor for Aseprite
 
 This project is a DMI (BYOND's Dream Maker icon files) editor extension for Aseprite, a popular pixel art tool. It is built in Rust and Lua and aims to enhance the Aseprite experience by providing tools for editing and managing DMI files.
